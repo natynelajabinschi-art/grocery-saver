@@ -52,11 +52,13 @@ export class AIPriceService {
   private static shouldUseAI(dbData: any): boolean {
     const { summary } = dbData;
     
+    if (!summary) return false;
+    
     // Utiliser l'IA seulement pour des cas intéressants
     return (
       summary.productsFound >= 2 && // Au moins 2 produits
       summary.totalProducts >= 3 && // Liste significative
-      (summary.priceDifference < 2 || // Petite différence → besoin d'analyse
+      (Math.abs(summary.priceDifference) < 2 || // Petite différence → besoin d'analyse
        summary.productsFound < summary.totalProducts) // Produits manquants
     );
   }
@@ -68,7 +70,7 @@ export class AIPriceService {
 
 CONTEXTE:
 - Produits recherchés: ${userProducts.join(', ')}
-- Budget total: $${(summary.totalIga + summary.totalMetro).toFixed(2)}
+- Budget total: $${((summary.totalIga || 0) + (summary.totalMetro || 0)).toFixed(2)}
 - Situation: ${this.getSituationContext(dbData)}
 
 DONNÉES RÉELLES:
@@ -86,29 +88,31 @@ Sois direct et utile, pas trop formel.`;
   private static getSituationContext(dbData: any): string {
     const { summary } = dbData;
     
-    if (summary.productsFound === 0) return "Aucune promotion trouvée";
-    if (summary.priceDifference < 0.5) return "Prix très similaires";
+    if (!summary || summary.productsFound === 0) return "Aucune promotion trouvée";
+    if (Math.abs(summary.priceDifference || 0) < 0.5) return "Prix très similaires";
     if (summary.productsFound < summary.totalProducts) return "Certains produits manquent";
-    if (summary.totalSavings > 5) return "Économies importantes possibles";
+    if ((summary.totalSavings || 0) > 5) return "Économies importantes possibles";
     
     return "Comparaison standard";
   }
 
   private static formatDataForAI(summary: any, detailedComparison: any[]): string {
+    if (!summary) return "Aucune donnée disponible";
+    
     let data = `TOTAUX:
-• IGA: $${summary.totalIga.toFixed(2)} (${summary.productsFoundIga} produit${summary.productsFoundIga > 1 ? 's' : ''})
-• Metro: $${summary.totalMetro.toFixed(2)} (${summary.productsFoundMetro} produit${summary.productsFoundMetro > 1 ? 's' : ''})
-• Économie: $${summary.totalSavings.toFixed(2)}
-• Produits trouvés: ${summary.productsFound}/${summary.totalProducts}
+• IGA: $${(summary.totalIga || 0).toFixed(2)} (${summary.productsFoundIga || 0} produit${(summary.productsFoundIga || 0) > 1 ? 's' : ''})
+• Metro: $${(summary.totalMetro || 0).toFixed(2)} (${summary.productsFoundMetro || 0} produit${(summary.productsFoundMetro || 0) > 1 ? 's' : ''})
+• Économie: $${(summary.totalSavings || 0).toFixed(2)}
+• Produits trouvés: ${summary.productsFound || 0}/${summary.totalProducts || 0}
 
 DÉTAIL:`;
 
-    detailedComparison.forEach(item => {
+    (detailedComparison || []).forEach(item => {
       data += `\n• ${item.product}: `;
       
       if (item.bestStore) {
-        data += `$${item.bestPrice?.toFixed(2)} chez ${item.bestStore}`;
-        if (item.savings > 0) data += ` (Économie: $${item.savings.toFixed(2)})`;
+        data += `$${(item.bestPrice || 0).toFixed(2)} chez ${item.bestStore}`;
+        if ((item.savings || 0) > 0) data += ` (Économie: $${(item.savings || 0).toFixed(2)})`;
         if ((item.bestStore === "IGA" && item.iga?.hasPromotion) || 
             (item.bestStore === "Metro" && item.metro?.hasPromotion)) {
           data += ` 🏷️ PROMO`;
@@ -123,19 +127,19 @@ DÉTAIL:`;
 
   private static isValidResponse(response: string): boolean {
     // Vérifier que la réponse n'est pas vide ou corrompue
-    return response && response.length > 50 && !response.includes('```');
+    return Boolean(response && response.length > 50 && !response.includes('```'));
   }
 
   private static generateSimpleAnalysis(dbData: any): string {
     const { summary } = dbData;
     
-    if (summary.productsFound === 0) {
+    if (!summary || summary.productsFound === 0) {
       return "🔍 Aucune promotion trouvée pour ces produits. Essayez avec des termes plus génériques ou vérifiez les circulaires directement.";
     }
 
-    return `🛒 **Meilleur choix: ${summary.bestStore}**
-• Économie: $${summary.totalSavings.toFixed(2)}
-• Produits en promo: ${summary.productsFound}/${summary.totalProducts}
-💡 Conseil: ${summary.bestStore} offre le meilleur rapport qualité-prix pour votre panier.`;
+    return `🛒 **Meilleur choix: ${summary.bestStore || 'Non déterminé'}**
+• Économie: $${(summary.totalSavings || 0).toFixed(2)}
+• Produits en promo: ${summary.productsFound || 0}/${summary.totalProducts || 0}
+💡 Conseil: ${summary.bestStore || 'Le supermarché sélectionné'} offre le meilleur rapport qualité-prix pour votre panier.`;
   }
 }
