@@ -10,6 +10,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.75.0",
     "axios": "^1.12.2",
+    "bootstrap": "^5.3.8",
     "cheerio": "^1.1.2",
     "framer-motion": "^12.23.24",
     "lucide-react": "^0.545.0",
