@@ -144,9 +144,9 @@ export default function Chatbot({ onCompare }: ChatbotProps) {
   };
 
   return (
-    <div className="card shadow-lg border-0" style={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
+    <div className="card shadow-lg border-0" style={{ height: '40rem', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
-      <div className="card-header bg-success text-white py-3">
+      <div className="card-header bg-dark text-white py-3">
         <div className="d-flex align-items-center">
           <Bot size={24} className="me-2" />
           <h5 className="mb-0 fw-bold">Assistant SmartShopper</h5>

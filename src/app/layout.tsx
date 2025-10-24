@@ -41,7 +41,7 @@ export default function RootLayout({
         {/* Footer */}
         <footer className="bg-dark text-white py-4 mt-5">
           <div className="container">
-            <hr className="border-white-50 my-4" />
+            <hr className="border-white-50" />
             <div className="text-center text-white-50">
               <small>
                 © {new Date().getFullYear()} SmartShopper — Tous droits réservés

@@ -1,4 +1,4 @@
-// lib/priceCalculator.ts - GESTION DU CACHE ET CALCULS PRÉCIS
+// lib/priceCalculator.ts - VERSION CORRIGÉE
 
 export interface PriceComparison {
   product: string;
@@ -9,72 +9,116 @@ export interface PriceComparison {
   savings: number;
   unit: string;
   confidence: number;
+  quantity?: number; // Ajout pour gérer les quantités
+}
+
+export interface ComparisonSummary {
+  totalIga: number;
+  totalMetro: number;
+  totalSavings: number;
+  bestStore: "IGA" | "Metro" | "Égalité";
+  productsFound: number;
+  totalProducts: number;
+  productsFoundIga: number;
+  productsFoundMetro: number;
+  priceDifference: number;
+  savingsPercentage: number;
 }
 
 export class PriceCalculator {
   /**
-   * Calcul précis du total avec arrondi
+   * Calcul précis du total avec gestion des doublons
    */
-  static calculateTotal(prices: (number | null)[]): number {
-    const validPrices = prices.filter((p): p is number => p !== null && p > 0);
-    const total = validPrices.reduce((sum, price) => sum + price, 0);
-    return Math.round(total * 100) / 100;
+  static calculateTotal(comparisons: PriceComparison[]): { igaTotal: number; metroTotal: number } {
+    let igaTotal = 0;
+    let metroTotal = 0;
+
+    comparisons.forEach(comparison => {
+      // Additionner tous les prix valides (même les doublons)
+      if (comparison.igaPrice !== null && comparison.igaPrice > 0) {
+        igaTotal += comparison.igaPrice;
+      }
+      if (comparison.metroPrice !== null && comparison.metroPrice > 0) {
+        metroTotal += comparison.metroPrice;
+      }
+    });
+
+    return {
+      igaTotal: Math.round(igaTotal * 100) / 100,
+      metroTotal: Math.round(metroTotal * 100) / 100
+    };
   }
 
   /**
-   * Calcul des économies
+   * Générer un résumé complet de la comparaison
    */
-  static calculateSavings(igaPrice: number | null, metroPrice: number | null): number {
-    if (igaPrice === null && metroPrice === null) return 0;
-    if (igaPrice === null) return 0;
-    if (metroPrice === null) return 0;
+  static generateSummary(
+    comparisons: PriceComparison[], 
+    originalProducts: string[]
+  ): ComparisonSummary {
+    const totals = this.calculateTotal(comparisons);
     
-    return Math.round(Math.abs(igaPrice - metroPrice) * 100) / 100;
+    const productsFoundIga = comparisons.filter(c => c.igaPrice !== null && c.igaPrice > 0).length;
+    const productsFoundMetro = comparisons.filter(c => c.metroPrice !== null && c.metroPrice > 0).length;
+    const productsFound = Math.max(productsFoundIga, productsFoundMetro);
+    
+    const totalSavings = Math.abs(totals.igaTotal - totals.metroTotal);
+    const priceDifference = totals.igaTotal - totals.metroTotal;
+    
+    let bestStore: "IGA" | "Metro" | "Égalité" = "Égalité";
+    if (totals.igaTotal < totals.metroTotal) {
+      bestStore = "IGA";
+    } else if (totals.metroTotal < totals.igaTotal) {
+      bestStore = "Metro";
+    }
+
+    const savingsPercentage = totals.igaTotal > 0 ? 
+      (totalSavings / Math.max(totals.igaTotal, totals.metroTotal)) * 100 : 0;
+
+    return {
+      totalIga: totals.igaTotal,
+      totalMetro: totals.metroTotal,
+      totalSavings,
+      bestStore,
+      productsFound,
+      totalProducts: originalProducts.length, // Utilise le nombre original de produits
+      productsFoundIga,
+      productsFoundMetro,
+      priceDifference,
+      savingsPercentage: Math.round(savingsPercentage * 100) / 100
+    };
   }
 
   /**
-   * Déterminer le meilleur magasin
+   * Calcul des économies par produit
    */
-  static determineBestStore(
-    igaTotal: number, 
-    metroTotal: number
-  ): { store: "IGA" | "Metro"; savings: number } {
-    if (igaTotal < metroTotal) {
-      return { store: "IGA", savings: metroTotal - igaTotal };
-    } else if (metroTotal < igaTotal) {
-      return { store: "Metro", savings: igaTotal - metroTotal };
+  static calculateProductSavings(comparison: PriceComparison): number {
+    if (comparison.igaPrice === null || comparison.metroPrice === null) {
+      return 0;
+    }
+    return Math.round(Math.abs(comparison.igaPrice - comparison.metroPrice) * 100) / 100;
+  }
+
+  /**
+   * Déterminer le meilleur magasin pour un produit
+   */
+  static determineBestStoreForProduct(igaPrice: number | null, metroPrice: number | null): {
+    store: "IGA" | "Metro" | null;
+    bestPrice: number | null;
+  } {
+    if (igaPrice === null && metroPrice === null) return { store: null, bestPrice: null };
+    if (igaPrice === null) return { store: "Metro", bestPrice: metroPrice };
+    if (metroPrice === null) return { store: "IGA", bestPrice: igaPrice };
+    
+    if (igaPrice < metroPrice) {
+      return { store: "IGA", bestPrice: igaPrice };
+    } else if (metroPrice < igaPrice) {
+      return { store: "Metro", bestPrice: metroPrice };
     } else {
-      return { store: "IGA", savings: 0 };
+      return { store: "IGA", bestPrice: igaPrice }; // Égalité, on choisit IGA par défaut
     }
   }
-
-  /**
-   * Vérifier la fraîcheur des données
-   */
-  static isDataFresh(lastUpdated: string): boolean {
-    const lastUpdate = new Date(lastUpdated);
-    const now = new Date();
-    const hoursDiff = (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60);
-    return hoursDiff < 24;
-  }
-
-  /**
-   * Calculer le pourcentage d'économie
-   */
-  static calculateSavingsPercentage(savings: number, totalPrice: number): number {
-    if (totalPrice === 0) return 0;
-    return Math.round((savings / totalPrice) * 100 * 100) / 100;
-  }
-
-  /**
-   * Formater un prix pour l'affichage
-   */
-  static formatPrice(price: number | null): string {
-    if (price === null) return "N/A";
-    return `$${price.toFixed(2)}`;
-  }
 }
-
 /**
  * Gestionnaire de cache des prix
  */

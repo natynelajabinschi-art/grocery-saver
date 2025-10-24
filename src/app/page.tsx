@@ -13,9 +13,9 @@ export default function HomePage() {
   };
 
   return (
-    <div className="container-fluid py-4">
+    <div className="container-fluid py-2">
       {/* Hero Section */}
-      <div className="row mb-4">
+      <div className="row mb-2">
         <div className="col-12">
           <div className="card bg-primary text-white border-0 shadow-lg">
             <div className="card-body py-5 text-center">
