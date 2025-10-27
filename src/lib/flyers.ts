@@ -3,7 +3,7 @@ import axios from "axios";
 
 export interface Promotion {
   product_name: string;
-  store_name: "IGA" | "Metro";
+  store_name: "IGA" | "Metro" | "Super-C";
   old_price: number | null;
   new_price: number;
   start_date?: string;
@@ -102,7 +102,7 @@ function categorizeProduct(productName: string): string | undefined {
  * Recherche optimisée avec retry et gestion d'erreur améliorée
  */
 export async function fetchFlippPromotions(
-  store: "IGA" | "Metro", 
+  store: "IGA" | "Metro" | "Super-C", 
   postalCode: string,
   maxPerCategory: number = 15
 ): Promise<Promotion[]> {
@@ -209,7 +209,7 @@ export async function fetchFlippPromotions(
  * Recherche ciblée optimisée
  */
 export async function fetchTargetedPromotions(
-  store: "IGA" | "Metro",
+  store: "IGA" | "Metro" | "Super-C",
   postalCode: string,
   productList: string[]
 ): Promise<Promotion[]> {
