@@ -308,17 +308,24 @@ export default function HomePage() {
             <div className="card-body">
               <div className="row g-2">
                 {/* Carte IGA */}
-                <div className="col-6">
+                <div className="col-4">
                   <div className="border rounded p-3 text-center bg-light">
                     <div className="fw-bold fs-5 text-success">IGA</div>
                     <small className="text-muted">Supermarché</small>
                   </div>
                 </div>
                 {/* Carte Metro */}
-                <div className="col-6">
+                <div className="col-4">
                   <div className="border rounded p-3 text-center bg-light">
                     <div className="fw-bold fs-5 text-success">Metro</div>
                     <small className="text-muted">Grossiste</small>
+                  </div>
+                </div>
+                 {/* Carte Super C */}
+                <div className="col-4">
+                  <div className="border rounded p-3 text-center bg-light">
+                    <div className="fw-bold fs-5 text-success">Super C</div>
+                    <small className="text-muted">Supermarché</small>
                   </div>
                 </div>
               </div>
