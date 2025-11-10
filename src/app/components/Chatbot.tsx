@@ -20,17 +20,19 @@ export default function Chatbot({ onCompare }: ChatbotProps) {
       sender: 'bot',
       text: `🛒 Bienvenue sur SmartShopper ! 
 
-Je vous aide à comparer les prix entre IGA et Metro.
+Je vous aide à comparer les prix entre Walmart, Metro et Super C.
 
 🎯 Comment utiliser :
 • Listez vos produits (ex: "lait, œufs, pain")
-• Je trouve les meilleurs prix automatiquement
-• Obtenez des conseils personnalisés
+• Je trouve les meilleures PROMOTIONS automatiquement
+• Obtenez des conseils personnalisés pour économiser
 
 💡 Exemples :
 "Je veux faire un gâteau au chocolat"
 "Comparer les prix des fruits et légumes"
-"Qu'est-ce qui est moins cher cette semaine ?"`,
+"Quelles sont les promotions cette semaine ?"
+
+📍 Magasins comparés : Walmart, Metro et Super C`,
       timestamp: new Date()
     }
   ]);
@@ -104,7 +106,14 @@ Je vous aide à comparer les prix entre IGA et Metro.
   };
 
   const exportShoppingList = () => {
-    const content = `🛒 Liste de courses SmartShopper\n\n${shoppingList.map(item => `☐ ${item}`).join('\n')}\n\n📅 Générée le ${new Date().toLocaleDateString('fr-FR')}`;
+    const content = `🛒 Liste de courses SmartShopper
+Comparaison : Walmart, Metro, Super C
+
+${shoppingList.map(item => `☐ ${item}`).join('\n')}
+
+📅 Générée le ${new Date().toLocaleDateString('fr-FR')}
+🏪 Vérifiez les promotions chez Walmart, Metro et Super C`;
+    
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -178,7 +187,7 @@ Je vous aide à comparer les prix entre IGA et Metro.
     // Message de chargement
     const loadingMessage: Message = {
       sender: 'bot',
-      text: '🔍 Analyse en cours... Je compare les prix pour vous.',
+      text: '🔍 Recherche des promotions chez Walmart, Metro et Super C...',
       timestamp: new Date()
     };
     setMessages(prev => [...prev, loadingMessage]);
@@ -225,7 +234,7 @@ Je vous aide à comparer les prix entre IGA et Metro.
       // Afficher les résultats avec composant structuré
       const resultsMessage: Message = {
         sender: 'bot',
-        text: `📊 Comparaison des prix
+        text: `📊 Comparaison Walmart, Metro et Super C
 
 ${data.summary.bestStore} est le plus avantageux pour vos ${allItems.length} produits.
 
@@ -236,7 +245,7 @@ ${renderPriceComparison(data)}`,
       // Message d'analyse IA
       const analysisMessage: Message = {
         sender: 'bot',
-        text: data.analysis || "💡 Conseil : Pensez à vérifier les dates de péremption et les promotions en magasin pour optimiser davantage vos économies !",
+        text: data.analysis || "💡 Conseil : Vérifiez les circulaires de Walmart, Metro et Super C chaque semaine pour maximiser vos économies !",
         timestamp: new Date()
       };
 
@@ -272,10 +281,11 @@ ${renderPriceComparison(data)}`,
   };
 
   const renderPriceComparison = (data: any) => {
-    return `🏪 IGA : ${data.summary.totalIga?.toFixed(2) || '0.00'}$
-🏪 Metro : ${data.summary.totalMetro?.toFixed(2) || '0.00'}$
-💰 Économie : ${data.summary.savings?.toFixed(2) || '0.00'}$
-📦 Produits trouvés : ${data.summary.productsFound || 0}/${data.summary.totalProducts || 0}`;
+    return `🏪 Walmart : ${data.summary.totalWalmart?.toFixed(2) || '0.00'}$ (${data.summary.promotionsFoundWalmart || 0} promos)
+🏪 Metro : ${data.summary.totalMetro?.toFixed(2) || '0.00'}$ (${data.summary.promotionsFoundMetro || 0} promos)
+🏪 Super C : ${data.summary.totalSuperC?.toFixed(2) || '0.00'}$ (${data.summary.promotionsFoundSuperC || 0} promos)
+💰 Économie : ${data.summary.totalSavings?.toFixed(2) || '0.00'}$
+📦 Produits en promo : ${data.metadata?.productsWithPromotions || 0}/${data.summary.totalProducts || 0}`;
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -297,9 +307,12 @@ ${renderPriceComparison(data)}`,
           <Bot size={24} className="me-2" />
           <h5 className="mb-0 fw-bold">Assistant SmartShopper</h5>
           <span className="badge bg-light text-success ms-auto">
-            {isTyping ? '✍️ En train d\'écrire...' : '🟢 En ligne'}
+            {isTyping ? '✏️ En train d\'écrire...' : '🟢 En ligne'}
           </span>
         </div>
+        <small className="d-block mt-1 opacity-75">
+          Compare Walmart, Metro et Super C
+        </small>
       </div>
 
       {/* Messages */}
@@ -463,7 +476,7 @@ ${renderPriceComparison(data)}`,
           </button>
         </div>
         <small className="text-muted d-block mt-2">
-          💡 Appuyez sur Entrée pour envoyer • Cliquez sur 🎤 pour parler
+          💡 Appuyez sur Entrée pour envoyer • 🎤 pour parler • Compare Walmart, Metro et Super C
         </small>
       </div>
 

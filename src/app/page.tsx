@@ -310,7 +310,7 @@ export default function HomePage() {
                 {/* Carte IGA */}
                 <div className="col-4">
                   <div className="border rounded p-3 text-center bg-light">
-                    <div className="fw-bold fs-5 text-success">IGA</div>
+                    <div className="fw-bold fs-5 text-success">Walmart</div>
                     <small className="text-muted">Supermarché</small>
                   </div>
                 </div>

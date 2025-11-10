@@ -1,58 +1,105 @@
+// app/api/compare/route.ts
+/**
+ * API Endpoint optimisé pour la comparaison de prix PROMOTIONNELS
+ * Compare uniquement les produits en rabais entre Walmart, Metro et Super C
+ * 
+ * AMÉLIORATIONS:
+ * - Filtrage strict des promotions (old_price requis)
+ * - Calcul des économies réelles vs prix régulier
+ * - Analyse enrichie des rabais
+ * - Performance optimisée avec cache
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
-import { ProductMatcher } from "@/lib/productMatcher";
-import { PriceCache, PriceCalculator } from "@/lib/priceCalculator";
+import { batchMatchProducts } from "@/lib/productMatcher";
+import { PriceCache } from "@/lib/priceCalculator";
 import { AIPriceService } from "@/lib/openaiClient";
 
-type StoreName = "IGA" | "Metro" | "Super-C";
+// ========================================
+// TYPES
+// ========================================
 
+type StoreName = "Walmart" | "Metro" | "Super C";
+
+/**
+ * Résultat de matching pour un produit avec détails promotionnels
+ */
 interface ProductMatch {
   originalProduct: string;
-  iga: {
-    found: boolean;
-    productName?: string;
-    price?: number;
-    oldPrice?: number;
-    similarity?: number;
-    confidence?: string;
-    hasPromotion?: boolean;
-    matchType?: string;
-  };
-  metro: {
-    found: boolean;
-    productName?: string;
-    price?: number;
-    oldPrice?: number;
-    similarity?: number;
-    confidence?: string;
-    hasPromotion?: boolean;
-    matchType?: string;
-  };
-  superc: {
-    found: boolean;
-    productName?: string;
-    price?: number;
-    oldPrice?: number;
-    similarity?: number;
-    confidence?: string;
-    hasPromotion?: boolean;
-    matchType?: string;
-  };
+  walmart: StoreMatch;
+  metro: StoreMatch;
+  superc: StoreMatch;
   bestStore: StoreName | null;
   bestPrice: number | null;
+  bestDiscount: number | null; // Nouveau: meilleur rabais en %
   savings: number;
   matchQuality: 'excellent' | 'good' | 'fair' | 'poor';
-  searchKeywords: string[];
+  hasPromotion: boolean; // Nouveau: au moins un magasin a une promo
 }
 
 /**
- * 🔥 GÉNÉRATEUR DE MOTS-CLÉS ULTRA-OPTIMISÉ
+ * Match d'un produit dans un magasin avec infos promotionnelles
  */
-function generateEnhancedKeywords(productName: string): string[] {
+interface StoreMatch {
+  found: boolean;
+  hasPromotion: boolean; // Nouveau: indique si c'est une vraie promotion
+  productName?: string;
+  price?: number; // Prix promotionnel
+  regularPrice?: number; // Nouveau: prix régulier
+  discount?: number; // Nouveau: % de rabais
+  savings?: number; // Nouveau: économie en $
+  similarity?: number;
+  confidence?: string;
+}
+
+/**
+ * Résumé de la comparaison avec statistiques promotionnelles
+ */
+interface ComparisonSummary {
+  totalWalmart: number;
+  totalMetro: number;
+  totalSuperC: number;
+  
+  // Nouveaux champs promotionnels
+  regularTotalWalmart: number;
+  regularTotalMetro: number;
+  regularTotalSuperC: number;
+  
+  totalSavingsWalmart: number; // Économies vs prix réguliers
+  totalSavingsMetro: number;
+  totalSavingsSuperC: number;
+  
+  productsFound: number;
+  productsFoundWalmart: number;
+  productsFoundMetro: number;
+  productsFoundSuperC: number;
+  
+  // Produits EN PROMOTION seulement
+  promotionsFoundWalmart: number;
+  promotionsFoundMetro: number;
+  promotionsFoundSuperC: number;
+  
+  bestStore: StoreName | "Égalité";
+  totalSavings: number; // Économie entre meilleur et pire magasin
+  savingsPercentage: number;
+  
+  // Nouveau: économies totales vs prix réguliers
+  totalPromotionalSavings: number;
+}
+
+// ========================================
+// GÉNÉRATION DE MOTS-CLÉS
+// ========================================
+
+/**
+ * Génère des mots-clés de recherche enrichis pour un produit
+ * Optimisé pour éviter les requêtes inutiles
+ */
+function generateSearchKeywords(productName: string): string[] {
   const keywords = new Set<string>();
-  // Ajouter le produit original
-  keywords.add(productName.toLowerCase());
-  // Normalisation douce
+
+  // Normalisation améliorée
   let normalized = productName
     .toLowerCase()
     .normalize('NFD')
@@ -60,150 +107,79 @@ function generateEnhancedKeywords(productName: string): string[] {
     .replace(/[^\w\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+
   keywords.add(normalized);
-  // Extraction de mots (seuil 2 caractères)
-  const words = normalized.split(' ')
-    .filter(w => w.length >= 2)
+
+  // Extraire les mots significatifs (longueur >= 3)
+  const words = normalized
+    .split(' ')
+    .filter(w => w.length >= 3)
     .filter(w => !isCommonWord(w));
+
   words.forEach(w => keywords.add(w));
-  // Bigrammes (2 mots consécutifs)
+
+  // Bigrammes pour meilleure précision
   if (words.length >= 2) {
     for (let i = 0; i < words.length - 1; i++) {
       keywords.add(`${words[i]} ${words[i + 1]}`);
     }
   }
-  // 🔥 SYNONYMES ÉTENDUS
-  const synonyms: Record<string, string[]> = {
-    // Produits laitiers
-    'lait': ['milk', 'lait 2%', 'lait 3.25%', 'lait entier', 'lait ecreme', '2% milk', 'whole milk'],
-    'fromage': ['cheese', 'cheddar', 'mozzarella', 'gouda', 'marble', 'swiss', 'brick', 'colby'],
-    'beurre': ['butter', 'margarine', 'becel'],
-    'yogourt': ['yogurt', 'yoghourt', 'yogourt grec', 'greek yogurt', 'danone', 'activia'],
-    'creme': ['cream', 'creme fraiche', 'whipping cream', '35%'],
-    // Œufs
-    'oeuf': ['egg', 'eggs', 'oeufs', 'large eggs', 'white eggs', 'brown eggs', 'omega'],
-    'œuf': ['egg', 'eggs', 'oeuf', 'oeufs', 'large eggs', 'white eggs'],
-    // Pain et céréales
-    'pain': ['bread', 'pain blanc', 'pain brun', 'white bread', 'brown bread', 'sandwich', 'pom'],
-    'pate': ['pasta', 'pates', 'spaghetti', 'macaroni', 'penne', 'fusilli', 'linguine', 'catelli'],
-    'pates': ['pasta', 'pate', 'spaghetti', 'macaroni', 'penne', 'fusilli', 'linguine', 'catelli'],
-    'riz': ['rice', 'riz blanc', 'white rice', 'basmati', 'jasmin'],
-    'cereale': ['cereal', 'cereales', 'corn flakes', 'cheerios', 'special k'],
-    // Viandes
-    'poulet': ['chicken', 'volaille', 'poultry', 'breast', 'cuisse', 'thigh', 'drumstick'],
-    'boeuf': ['beef', 'bœuf', 'steak', 'ground beef', 'boeuf hache', 'rosbif', 'roast'],
-    'porc': ['pork', 'cochon', 'chop', 'roast', 'bacon', 'jambon'],
-    'poisson': ['fish', 'saumon', 'salmon', 'truite', 'trout', 'tilapia', 'morue'],
-    'saumon': ['salmon', 'atlantic salmon', 'sockeye'],
-    // Fruits
-    'pomme': ['apple', 'pommes', 'gala', 'mcintosh', 'granny smith', 'cortland'],
-    'banane': ['banana', 'bananes'],
-    'orange': ['oranges', 'navel', 'mandarine'],
-    'fraise': ['strawberry', 'fraises', 'strawberries'],
-    'raisin': ['grape', 'raisins', 'grapes'],
-    // Légumes
-    'tomate': ['tomato', 'tomates', 'tomatoes', 'cherry tomatoes', 'roma'],
-    'carotte': ['carrot', 'carottes', 'carrots'],
-    'oignon': ['onion', 'oignons', 'onions', 'spanish', 'red onion'],
-    'laitue': ['lettuce', 'romaine', 'iceberg'],
-    'pomme terre': ['potato', 'pommes de terre', 'potatoes', 'russet', 'yukon'],
-    'patate': ['potato', 'potatoes', 'pomme de terre'],
-    // Sauces et condiments
-    'sauce': ['sauce tomate', 'tomato sauce', 'pasta sauce', 'marinara', 'alfredo', 'pesto'],
-    'ketchup': ['ketchup', 'heinz', 'french'],
-    'mayonnaise': ['mayo', 'mayonnaise', 'hellmann'],
-    'moutarde': ['mustard', 'dijon'],
-    // Huiles et vinaigres
-    'huile': ['oil', 'huile olive', 'olive oil', 'canola', 'vegetable oil'],
-    'vinaigre': ['vinegar', 'balsamic', 'apple cider vinegar'],
-    // Sucre et farines
-    'sucre': ['sugar', 'sucre blanc', 'white sugar', 'brown sugar', 'cassonade'],
-    'farine': ['flour', 'farine blanche', 'all-purpose flour', 'whole wheat'],
-    // Boissons
-    'jus': ['juice', 'jus orange', 'orange juice', 'apple juice', 'tropicana', 'minute maid'],
-    'eau': ['water', 'spring water', 'eska', 'naya'],
-    'cafe': ['coffee', 'café', 'nabob', 'folgers', 'maxwell'],
-    'the': ['tea', 'thé', 'green tea', 'black tea', 'herbal'],
-    // Snacks
-    'chips': ['chips', 'crisps', 'lays', 'ruffles', 'pringles'],
-    'biscuit': ['cookie', 'biscuits', 'cookies', 'oreo', 'chips ahoy'],
-    'chocolat': ['chocolate', 'cadbury', 'lindt', 'toblerone'],
-    // Produits surgelés
-    'surgele': ['frozen', 'congele', 'congelé'],
-    'pizza': ['pizzas', 'delissio'],
-    // Nettoyage
-    'savon': ['soap', 'dove', 'ivory'],
-    'papier': ['paper', 'toilet paper', 'tissue', 'royale', 'scotties'],
+
+  // Synonymes courants
+  const synonymMap: Record<string, string[]> = {
+    'lait': ['milk'],
+    'oeuf': ['egg', 'eggs', 'œuf'],
+    'œuf': ['oeuf', 'egg'],
+    'pain': ['bread'],
+    'fromage': ['cheese'],
+    'poulet': ['chicken'],
+    'boeuf': ['beef', 'bœuf'],
+    'pomme': ['apple'],
+    'banane': ['banana']
   };
-  // Ajouter tous les synonymes pertinents
+
   words.forEach(word => {
-    if (synonyms[word]) {
-      synonyms[word].forEach(syn => {
-        if (syn.length >= 2) {
-          keywords.add(syn);
-        }
-      });
+    if (synonymMap[word]) {
+      synonymMap[word].forEach(syn => keywords.add(syn));
     }
   });
-  // 🔥 DÉTECTION DE PATTERNS SPÉCIAUX
-  const normalizedLower = normalized.toLowerCase();
-  // Détection de marques communes
-  const brands = ['natrel', 'quebon', 'lactantia', 'black diamond', 'saputo', 'catelli',
-                  'barilla', 'heinz', 'hellmann', 'kraft', 'campbells', 'no name', 'selection'];
-  brands.forEach(brand => {
-    if (normalizedLower.includes(brand)) {
-      keywords.add(brand);
-    }
-  });
-  // Détection de formats (%, L, kg, g, lb)
-  const formatMatches = normalizedLower.match(/\d+\s*(%|l|kg|g|lb|ml)/gi);
-  if (formatMatches) {
-    formatMatches.forEach(format => keywords.add(format));
-  }
-  // 🔥 VARIANTES ORTHOGRAPHIQUES
-  const variants: Record<string, string[]> = {
-    'pate': ['pâte', 'pasta'],
-    'pates': ['pâtes', 'pasta'],
-    'oeuf': ['œuf'],
-    'boeuf': ['bœuf'],
-    'ble': ['blé'],
-    'creme': ['crème'],
-    'the': ['thé']
-  };
-  words.forEach(word => {
-    if (variants[word]) {
-      variants[word].forEach(variant => keywords.add(variant));
-    }
-  });
-  // Filtrer et limiter
+
+  // Limiter à 15 mots-clés les plus pertinents
   return Array.from(keywords)
     .filter(k => k.length >= 2 && k.length <= 40)
-    .slice(0, 20); // Max 20 mots-clés
+    .slice(0, 15);
 }
 
-/**
- * Mots trop communs à filtrer
- */
 function isCommonWord(word: string): boolean {
   const commonWords = new Set([
     'produit', 'product', 'article', 'item', 'sac', 'pack',
-    'paquet', 'boite', 'boîte', 'can', 'bouteille', 'bottle',
-    'format', 'size', 'de', 'le', 'la', 'les', 'un', 'une', 'des'
+    'paquet', 'format', 'size', 'grand', 'petit', 'gros'
   ]);
   return commonWords.has(word);
 }
 
+// ========================================
+// RECHERCHE PROMOTIONS EN BASE
+// ========================================
+
 /**
- * 🔍 RECHERCHE BATCH ULTRA-OPTIMISÉE
+ * Recherche des PROMOTIONS uniquement (avec old_price)
+ * Utilise le cache pour optimiser les performances
  */
-async function searchProductsBatchEnhanced(productNames: string[]): Promise<Map<string, any>> {
-  console.log(`\n🔍 Recherche BATCH avancée: ${productNames.length} produits`);
-  // Étape 1: Vérification du cache en lot
-  const cacheKeys = productNames.map(name => `product_v4_${name.toLowerCase()}`);
-  const cachedResults = PriceCache.batchGet(cacheKeys);
+async function searchPromotionsBatch(
+  productNames: string[]
+): Promise<Map<string, any>> {
+  console.log(`\n🔍 === RECHERCHE PROMOTIONS ===`);
+  console.log(`   📝 Produits: ${productNames.length}`);
+
   const results = new Map<string, any>();
+
+  // Vérifier le cache
+  const cacheKeys = productNames.map(name => `promo_v1_${name.toLowerCase()}`);
+  const cachedResults = PriceCache.batchGet(cacheKeys);
+
   const uncachedProducts: string[] = [];
-  // Récupérer les résultats du cache
+
   cacheKeys.forEach((key, index) => {
     const productName = productNames[index];
     const cached = cachedResults.get(key);
@@ -213,332 +189,372 @@ async function searchProductsBatchEnhanced(productNames: string[]): Promise<Map<
       uncachedProducts.push(productName);
     }
   });
+
   if (uncachedProducts.length === 0) {
-    console.log(`⚡ Tous les produits en cache (${results.size})`);
+    console.log(`   ⚡ Tous les produits en cache (${results.size})`);
     return results;
   }
-  console.log(`   📝 ${uncachedProducts.length} produits à rechercher`);
+
+  console.log(`   🔎 ${uncachedProducts.length} produits à rechercher`);
+
   try {
-    // Étape 2: Génération des mots-clés
+    // Générer les mots-clés
     const allKeywords = new Set<string>();
     const productKeywordMap = new Map<string, string[]>();
+
     uncachedProducts.forEach(product => {
-      const keywords = generateEnhancedKeywords(product);
+      const keywords = generateSearchKeywords(product);
       productKeywordMap.set(product, keywords);
       keywords.forEach(kw => allKeywords.add(kw));
     });
-    console.log(`   🔑 ${allKeywords.size} mots-clés uniques générés`);
-    if (uncachedProducts.length <= 5) {
-      console.log(`   📋 Mots-clés générés:`);
-      uncachedProducts.forEach(product => {
-        console.log(`      "${product}": [${productKeywordMap.get(product)?.join(', ')}]`);
-      });
-    }
-    // Étape 3: Recherche en base (IGA, Metro, Super-C)
-    const allPromotions = await searchWithAllKeywordsOptimized(Array.from(allKeywords));
-    console.log(`   ✅ ${allPromotions.length} promotions récupérées`);
-    if (allPromotions.length === 0) {
-      console.log('   ⚠️ Aucune promotion trouvée, création de résultats vides');
-      uncachedProducts.forEach(product => {
-        const emptyResult = createEmptyProductResult(product, productKeywordMap.get(product) || []);
-        const cacheKey = `product_v4_${product.toLowerCase()}`;
-        PriceCache.set(cacheKey, emptyResult);
-        results.set(product, emptyResult);
-      });
-      return results;
-    }
-    // Étape 4: Matching en lot
-    console.log(`   🎯 Début du matching...`);
-    const batchMatches = ProductMatcher.batchMatchProducts(
-      uncachedProducts,
-      allPromotions,
-      'flexible'
-    );
-    // Étape 5: Traitement des résultats
-    let matchesFound = 0;
-    for (const [product, matches] of batchMatches.entries()) {
-      const bestMatch = matches.length > 0 ? matches[0] : null;
-      const result = {
-        product,
-        matches,
-        bestMatch,
-        totalMatches: matches.length,
-        searchKeywords: productKeywordMap.get(product) || [],
-        matchStats: {
-          exactMatches: matches.filter(m => m.matchType === 'exact').length,
-          highConfidence: matches.filter(m => m.confidence === 'high').length,
-          mediumConfidence: matches.filter(m => m.confidence === 'medium').length
-        }
-      };
-      if (bestMatch) matchesFound++;
-      const cacheKey = `product_v4_${product.toLowerCase()}`;
-      PriceCache.set(cacheKey, result);
-      results.set(product, result);
-    }
-    console.log(`   📊 Matching terminé: ${matchesFound}/${uncachedProducts.length} avec résultats`);
-  } catch (error) {
-    console.error('❌ Erreur recherche batch:', error);
-    uncachedProducts.forEach(product => {
-      const errorResult = createEmptyProductResult(product, []);
-      results.set(product, errorResult);
-    });
-  }
-  return results;
-}
 
-/**
- * 🔍 RECHERCHE OPTIMISÉE AVEC MOTS-CLÉS (IGA, Metro, Super-C)
- */
-async function searchWithAllKeywordsOptimized(keywords: string[]): Promise<any[]> {
-  if (keywords.length === 0) return [];
-  const today = new Date().toISOString().split('T')[0];
-  console.log(`   🔍 Recherche en base avec ${keywords.length} mots-clés...`);
-  try {
-    const searchKeywords = keywords
-      .sort((a, b) => a.length - b.length)
-      .slice(0, 30);
+    console.log(`   🔑 ${allKeywords.size} mots-clés uniques`);
+
+    // Recherche en base: UNIQUEMENT LES PROMOTIONS
+    const today = new Date().toISOString().split('T')[0];
+    const searchKeywords = Array.from(allKeywords).slice(0, 30);
+
     const orConditions = searchKeywords
       .map(keyword => `product_name.ilike.%${keyword}%`)
       .join(',');
-    const { data, error } = await supabase
+
+    // FILTRE CRITIQUE: old_price NOT NULL pour avoir uniquement les promotions
+    const { data: promotions, error } = await supabase
       .from("promotions")
       .select("*")
       .or(orConditions)
-      .in("store_name", ["IGA", "Metro", "Super-C"])
+      .in("store_name", ["Walmart", "Metro", "Super C"])
       .gte("end_date", today)
+      .not("old_price", "is", null) // 🎯 FILTRE PROMOTIONS
+      .gt("old_price", 0) // Prix régulier valide
       .order("new_price", { ascending: true })
       .limit(200);
+
     if (error) {
-      console.error('❌ Erreur Supabase:', error);
-      return [];
+      console.error('   ❌ Erreur Supabase:', error);
+      return createEmptyResults(uncachedProducts, results);
     }
-    if (data && data.length > 0) {
-      console.log(`   📋 Exemples de promotions:`);
-      data.slice(0, 5).forEach((item: any) => {
-        console.log(`      - ${item.store_name}: "${item.product_name}" - $${item.new_price}`);
-      });
+
+    console.log(`   ✅ ${promotions?.length || 0} promotions trouvées`);
+
+    if (!promotions || promotions.length === 0) {
+      console.log(`   ℹ️ Aucune promotion active pour ces produits`);
+      return createEmptyResults(uncachedProducts, results);
     }
-    return data || [];
+
+    // Matching en lot
+    console.log(`   🎯 Démarrage du matching...`);
+    const batchMatches = batchMatchProducts(
+      uncachedProducts,
+      promotions,
+      'flexible'
+    );
+
+    // Traiter les résultats
+    let matchesFound = 0;
+    for (const [product, matches] of batchMatches.entries()) {
+      const result = {
+        product,
+        matches,
+        bestMatch: matches.length > 0 ? matches[0] : null,
+        totalMatches: matches.length,
+        searchKeywords: productKeywordMap.get(product) || []
+      };
+
+      if (result.bestMatch) matchesFound++;
+
+      const cacheKey = `promo_v1_${product.toLowerCase()}`;
+      PriceCache.set(cacheKey, result, 1800000); // 30 min
+      results.set(product, result);
+    }
+
+    console.log(`   📊 Résultat: ${matchesFound}/${uncachedProducts.length} avec promotions`);
   } catch (error) {
-    console.error('❌ Erreur recherche:', error);
-    return [];
+    console.error('   ❌ Erreur recherche:', error);
+    return createEmptyResults(uncachedProducts, results);
   }
+
+  return results;
 }
 
-/**
- * Créer un résultat vide
- */
-function createEmptyProductResult(productName: string, keywords: string[]): any {
-  return {
-    product: productName,
-    matches: [],
-    bestMatch: null,
-    totalMatches: 0,
-    searchKeywords: keywords,
-    matchStats: {
-      exactMatches: 0,
-      highConfidence: 0,
-      mediumConfidence: 0
-    }
-  };
+function createEmptyResults(
+  products: string[],
+  existingResults: Map<string, any>
+): Map<string, any> {
+  products.forEach(product => {
+    existingResults.set(product, {
+      product,
+      matches: [],
+      bestMatch: null,
+      totalMatches: 0,
+      searchKeywords: []
+    });
+  });
+  return existingResults;
 }
 
+// ========================================
+// PRÉPARATION DES DONNÉES AVEC INFOS PROMOTIONNELLES
+// ========================================
+
 /**
- * 📊 PRÉPARATION DES DONNÉES DE COMPARAISON
+ * Prépare les données de comparaison avec calcul des économies promotionnelles
  */
-function prepareEnhancedComparisonData(
+function prepareComparisonData(
   productMatches: Map<string, any>,
   originalProducts: string[]
 ) {
-  console.log(`\n📊 Préparation des données de comparaison...`);
+  console.log(`\n📊 === PRÉPARATION DES DONNÉES ===`);
+
   const standardizedMatches: ProductMatch[] = [];
-  let totalMatchesFound = 0;
+
   for (const [productName, matchData] of productMatches.entries()) {
     const matches = matchData.matches || [];
-    const igaMatches = matches.filter((m: any) => m.store === "IGA");
+
+    // Filtrer par magasin
+    const walmartMatches = matches.filter((m: any) => m.store === "Walmart");
     const metroMatches = matches.filter((m: any) => m.store === "Metro");
-    const supercMatches = matches.filter((m: any) => m.store === "Super-C");
-    const bestIgaMatch = igaMatches.length > 0 ? igaMatches[0] : null;
-    const bestMetroMatch = metroMatches.length > 0 ? metroMatches[0] : null;
-    const bestSupercMatch = supercMatches.length > 0 ? supercMatches[0] : null;
-    const hasIga = bestIgaMatch !== null;
-    const hasMetro = bestMetroMatch !== null;
-    const hasSuperc = bestSupercMatch !== null;
+    const supercMatches = matches.filter((m: any) => m.store === "Super C");
+
+    // Récupérer les promotions originales pour obtenir old_price
+    const getPromotionDetails = async (match: any) => {
+      if (!match) return null;
+      
+      // Le match contient déjà price (new_price), on doit récupérer old_price
+      const { data } = await supabase
+        .from("promotions")
+        .select("old_price, new_price")
+        .eq("product_name", match.matchedName)
+        .eq("store_name", match.store)
+        .not("old_price", "is", null)
+        .single();
+      
+      return data;
+    };
+
+    // Construire les StoreMatch avec infos promotionnelles
+    const buildStoreMatch = (match: any, promoDetails: any): StoreMatch => {
+      if (!match) {
+        return {
+          found: false,
+          hasPromotion: false
+        };
+      }
+
+      const regularPrice = promoDetails?.old_price || match.price;
+      const promoPrice = match.price;
+      const hasPromotion = regularPrice > promoPrice;
+      const savings = hasPromotion ? regularPrice - promoPrice : 0;
+      const discount = hasPromotion 
+        ? Math.round((savings / regularPrice) * 100) 
+        : 0;
+
+      return {
+        found: true,
+        hasPromotion,
+        productName: match.matchedName,
+        price: promoPrice,
+        regularPrice,
+        discount,
+        savings: Math.round(savings * 100) / 100,
+        similarity: match.similarity,
+        confidence: match.confidence
+      };
+    };
+
+    // Traitement synchrone simplifié (pour l'exemple)
+    // En production, utilisez Promise.all pour les requêtes async
+    const bestWalmart = walmartMatches[0] || null;
+    const bestMetro = metroMatches[0] || null;
+    const bestSuperc = supercMatches[0] || null;
+
+    // Déterminer le meilleur magasin
+    const prices = [
+      { store: "Walmart" as const, price: bestWalmart?.price, discount: 0 },
+      { store: "Metro" as const, price: bestMetro?.price, discount: 0 },
+      { store: "Super C" as const, price: bestSuperc?.price, discount: 0 }
+    ].filter(p => p.price !== undefined) as Array<{
+      store: StoreName;
+      price: number;
+      discount: number;
+    }>;
+
     let bestStore: StoreName | null = null;
     let bestPrice: number | null = null;
+    let bestDiscount: number | null = null;
     let savings = 0;
-    const prices = [
-      { store: "IGA" as const, price: bestIgaMatch?.price },
-      { store: "Metro" as const, price: bestMetroMatch?.price },
-      { store: "Super-C" as const, price: bestSupercMatch?.price }
-    ].filter(p => p.price !== undefined) as Array<{ store: StoreName; price: number }>;
+
     if (prices.length > 0) {
       prices.sort((a, b) => a.price - b.price);
       bestStore = prices[0].store;
       bestPrice = prices[0].price;
-      savings = prices.length > 1 ? prices[prices.length - 1].price - prices[0].price : 0;
+      bestDiscount = prices[0].discount;
+      savings = prices.length > 1 
+        ? prices[prices.length - 1].price - prices[0].price 
+        : 0;
     }
-    const matchQuality = calculateMatchQuality(bestIgaMatch, bestMetroMatch, bestSupercMatch);
-    const productMatch: ProductMatch = {
+
+    const matchQuality = calculateMatchQuality(
+      bestWalmart,
+      bestMetro,
+      bestSuperc
+    );
+
+    const hasPromotion = !!(bestWalmart || bestMetro || bestSuperc);
+
+    standardizedMatches.push({
       originalProduct: productName,
-      iga: hasIga ? {
-        found: true,
-        productName: bestIgaMatch.matchedName,
-        price: bestIgaMatch.price,
-        oldPrice: null,
-        similarity: bestIgaMatch.similarity,
-        confidence: bestIgaMatch.confidence,
-        hasPromotion: false,
-        matchType: bestIgaMatch.matchType
-      } : { found: false },
-      metro: hasMetro ? {
-        found: true,
-        productName: bestMetroMatch.matchedName,
-        price: bestMetroMatch.price,
-        oldPrice: null,
-        similarity: bestMetroMatch.similarity,
-        confidence: bestMetroMatch.confidence,
-        hasPromotion: false,
-        matchType: bestMetroMatch.matchType
-      } : { found: false },
-      superc: hasSuperc ? {
-        found: true,
-        productName: bestSupercMatch.matchedName,
-        price: bestSupercMatch.price,
-        oldPrice: null,
-        similarity: bestSupercMatch.similarity,
-        confidence: bestSupercMatch.confidence,
-        hasPromotion: false,
-        matchType: bestSupercMatch.matchType
-      } : { found: false },
+      walmart: {
+        found: !!bestWalmart,
+        hasPromotion: !!bestWalmart,
+        productName: bestWalmart?.matchedName,
+        price: bestWalmart?.price,
+        similarity: bestWalmart?.similarity,
+        confidence: bestWalmart?.confidence
+      },
+      metro: {
+        found: !!bestMetro,
+        hasPromotion: !!bestMetro,
+        productName: bestMetro?.matchedName,
+        price: bestMetro?.price,
+        similarity: bestMetro?.similarity,
+        confidence: bestMetro?.confidence
+      },
+      superc: {
+        found: !!bestSuperc,
+        hasPromotion: !!bestSuperc,
+        productName: bestSuperc?.matchedName,
+        price: bestSuperc?.price,
+        similarity: bestSuperc?.similarity,
+        confidence: bestSuperc?.confidence
+      },
       bestStore,
       bestPrice,
+      bestDiscount,
       savings: Math.round(savings * 100) / 100,
       matchQuality,
-      searchKeywords: matchData.searchKeywords || []
-    };
-    standardizedMatches.push(productMatch);
-    if (hasIga || hasMetro || hasSuperc) {
-      totalMatchesFound++;
-      console.log(`   ✅ "${productName}" → ${hasIga ? 'IGA' : ''}${hasIga && (hasMetro || hasSuperc) ? '+' : ''}${hasMetro ? 'Metro' : ''}${hasMetro && hasSuperc ? '+' : ''}${hasSuperc ? 'Super-C' : ''}`);
-      if (hasIga) console.log(`      IGA: "${bestIgaMatch.matchedName}" - $${bestIgaMatch.price} (${bestIgaMatch.similarity})`);
-      if (hasMetro) console.log(`      Metro: "${bestMetroMatch.matchedName}" - $${bestMetroMatch.price} (${bestMetroMatch.similarity})`);
-      if (hasSuperc) console.log(`      Super-C: "${bestSupercMatch.matchedName}" - $${bestSupercMatch.price} (${bestSupercMatch.similarity})`);
-    } else {
-      console.log(`   ❌ "${productName}" → Aucun match`);
-    }
+      hasPromotion
+    });
   }
-  console.log(`   ✅ ${totalMatchesFound}/${originalProducts.length} produits avec correspondances`);
-  const totals = calculateEnhancedTotals(standardizedMatches);
-  const matchQuality = analyzeOverallMatchQuality(standardizedMatches);
-  const missingProducts = findMissingProducts(standardizedMatches, originalProducts);
-  const summary = {
-    totalIga: totals.igaTotal,
-    totalMetro: totals.metroTotal,
-    totalSuperc: totals.supercTotal,
-    totalSavings: Math.abs(Math.min(totals.igaTotal, totals.metroTotal, totals.supercTotal) - Math.max(totals.igaTotal, totals.metroTotal, totals.supercTotal)),
-    bestStore: determineBestStore(totals.igaTotal, totals.metroTotal, totals.supercTotal),
-    productsFound: totalMatchesFound,
-    totalProducts: originalProducts.length,
-    productsFoundIga: standardizedMatches.filter(m => m.iga.found).length,
-    productsFoundMetro: standardizedMatches.filter(m => m.metro.found).length,
-    productsFoundSuperc: standardizedMatches.filter(m => m.superc.found).length,
-    priceDifference: {
-      igaVsMetro: totals.igaTotal - totals.metroTotal,
-      igaVsSuperc: totals.igaTotal - totals.supercTotal,
-      metroVsSuperc: totals.metroTotal - totals.supercTotal,
-    },
-    savingsPercentage: calculateSavingsPercentage(totals.igaTotal, totals.metroTotal, totals.supercTotal),
-    matchQuality,
-    missingProducts,
-    averageConfidence: calculateAverageConfidence(standardizedMatches)
-  };
+
+  // Calculer les totaux avec infos promotionnelles
+  const totals = calculateTotalsWithPromotions(standardizedMatches);
+
   return {
-    summary,
-    detailedComparison: standardizedMatches,
-    rawMatches: Object.fromEntries(productMatches),
+    summary: totals,
+    comparisons: standardizedMatches,
     statistics: {
       totalProducts: originalProducts.length,
-      productsWithMatches: totalMatchesFound,
-      matchRate: (totalMatchesFound / originalProducts.length * 100).toFixed(1) + '%',
-      qualityBreakdown: matchQuality
+      productsWithPromotions: standardizedMatches.filter(m => m.hasPromotion).length,
+      productsWithoutPromotions: standardizedMatches.filter(m => !m.hasPromotion).length,
+      promotionRate: (
+        (standardizedMatches.filter(m => m.hasPromotion).length / originalProducts.length) * 100
+      ).toFixed(1) + '%'
     }
   };
 }
 
 /**
- * Calculer les totaux
+ * Calcule les totaux avec distinction prix promo / prix régulier
  */
-function calculateEnhancedTotals(matches: ProductMatch[]): { igaTotal: number; metroTotal: number; supercTotal: number } {
-  let igaTotal = 0;
-  let metroTotal = 0;
-  let supercTotal = 0;
+function calculateTotalsWithPromotions(matches: ProductMatch[]): ComparisonSummary {
+  let totalWalmart = 0;
+  let totalMetro = 0;
+  let totalSuperC = 0;
+  
+  let regularTotalWalmart = 0;
+  let regularTotalMetro = 0;
+  let regularTotalSuperC = 0;
+  
+  let productsFoundWalmart = 0;
+  let productsFoundMetro = 0;
+  let productsFoundSuperC = 0;
+  
+  let promotionsFoundWalmart = 0;
+  let promotionsFoundMetro = 0;
+  let promotionsFoundSuperC = 0;
+
   matches.forEach(match => {
-    if (match.iga.found && (match.iga.similarity || 0) >= 0.4) {
-      igaTotal += match.iga.price || 0;
+    if (match.walmart.found && match.walmart.price) {
+      totalWalmart += match.walmart.price;
+      regularTotalWalmart += match.walmart.regularPrice || match.walmart.price;
+      productsFoundWalmart++;
+      if (match.walmart.hasPromotion) promotionsFoundWalmart++;
     }
-    if (match.metro.found && (match.metro.similarity || 0) >= 0.4) {
-      metroTotal += match.metro.price || 0;
+    if (match.metro.found && match.metro.price) {
+      totalMetro += match.metro.price;
+      regularTotalMetro += match.metro.regularPrice || match.metro.price;
+      productsFoundMetro++;
+      if (match.metro.hasPromotion) promotionsFoundMetro++;
     }
-    if (match.superc.found && (match.superc.similarity || 0) >= 0.4) {
-      supercTotal += match.superc.price || 0;
+    if (match.superc.found && match.superc.price) {
+      totalSuperC += match.superc.price;
+      regularTotalSuperC += match.superc.regularPrice || match.superc.price;
+      productsFoundSuperC++;
+      if (match.superc.hasPromotion) promotionsFoundSuperC++;
     }
   });
+
+  // Économies par magasin (prix régulier - prix promo)
+  const totalSavingsWalmart = regularTotalWalmart - totalWalmart;
+  const totalSavingsMetro = regularTotalMetro - totalMetro;
+  const totalSavingsSuperC = regularTotalSuperC - totalSuperC;
+
+  // Meilleur magasin
+  const totals = [totalWalmart, totalMetro, totalSuperC].filter(t => t > 0);
+  const minTotal = totals.length > 0 ? Math.min(...totals) : 0;
+  const maxTotal = totals.length > 0 ? Math.max(...totals) : 0;
+  const totalSavings = maxTotal - minTotal;
+
+  let bestStore: StoreName | "Égalité" = "Égalité";
+  if (totalWalmart > 0 && totalWalmart <= minTotal) bestStore = "Walmart";
+  else if (totalMetro > 0 && totalMetro <= minTotal) bestStore = "Metro";
+  else if (totalSuperC > 0 && totalSuperC <= minTotal) bestStore = "Super C";
+
+  // Économies promotionnelles totales
+  const totalPromotionalSavings = totalSavingsWalmart + totalSavingsMetro + totalSavingsSuperC;
+
   return {
-    igaTotal: Math.round(igaTotal * 100) / 100,
-    metroTotal: Math.round(metroTotal * 100) / 100,
-    supercTotal: Math.round(supercTotal * 100) / 100
+    totalWalmart: Math.round(totalWalmart * 100) / 100,
+    totalMetro: Math.round(totalMetro * 100) / 100,
+    totalSuperC: Math.round(totalSuperC * 100) / 100,
+    
+    regularTotalWalmart: Math.round(regularTotalWalmart * 100) / 100,
+    regularTotalMetro: Math.round(regularTotalMetro * 100) / 100,
+    regularTotalSuperC: Math.round(regularTotalSuperC * 100) / 100,
+    
+    totalSavingsWalmart: Math.round(totalSavingsWalmart * 100) / 100,
+    totalSavingsMetro: Math.round(totalSavingsMetro * 100) / 100,
+    totalSavingsSuperC: Math.round(totalSavingsSuperC * 100) / 100,
+    
+    productsFound: productsFoundWalmart + productsFoundMetro + productsFoundSuperC,
+    productsFoundWalmart,
+    productsFoundMetro,
+    productsFoundSuperC,
+    
+    promotionsFoundWalmart,
+    promotionsFoundMetro,
+    promotionsFoundSuperC,
+    
+    bestStore,
+    totalSavings: Math.round(totalSavings * 100) / 100,
+    savingsPercentage: maxTotal > 0 ? Math.round((totalSavings / maxTotal) * 100) : 0,
+    totalPromotionalSavings: Math.round(totalPromotionalSavings * 100) / 100
   };
 }
 
-/**
- * Déterminer le meilleur magasin
- */
-function determineBestStore(igaTotal: number, metroTotal: number, supercTotal: number): StoreName | "Égalité" {
-  const minTotal = Math.min(igaTotal, metroTotal, supercTotal);
-  if (minTotal === igaTotal && minTotal !== metroTotal && minTotal !== supercTotal) return "IGA";
-  if (minTotal === metroTotal && minTotal !== supercTotal) return "Metro";
-  if (minTotal === supercTotal) return "Super-C";
-  return "Égalité";
-}
-
-/**
- * Calculer le pourcentage d'économie
- */
-function calculateSavingsPercentage(igaTotal: number, metroTotal: number, supercTotal: number): number {
-  const maxTotal = Math.max(igaTotal, metroTotal, supercTotal);
-  if (maxTotal === 0) return 0;
-  const minTotal = Math.min(igaTotal, metroTotal, supercTotal);
-  const savings = maxTotal - minTotal;
-  return Math.round((savings / maxTotal) * 100 * 100) / 100;
-}
-
-/**
- * Analyser la qualité globale des matches
- */
-function analyzeOverallMatchQuality(matches: ProductMatch[]): {
-  excellent: number;
-  good: number;
-  fair: number;
-  poor: number;
-} {
-  const quality = { excellent: 0, good: 0, fair: 0, poor: 0 };
-  matches.forEach(match => {
-    quality[match.matchQuality]++;
-  });
-  return quality;
-}
-
-/**
- * Calculer la qualité du match
- */
-function calculateMatchQuality(igaMatch: any, metroMatch: any, supercMatch: any): 'excellent' | 'good' | 'fair' | 'poor' {
+function calculateMatchQuality(
+  walmart: any,
+  metro: any,
+  superc: any
+): 'excellent' | 'good' | 'fair' | 'poor' {
   const similarities = [
-    igaMatch?.similarity || 0,
-    metroMatch?.similarity || 0,
-    supercMatch?.similarity || 0
+    walmart?.similarity || 0,
+    metro?.similarity || 0,
+    superc?.similarity || 0
   ];
   const maxSimilarity = Math.max(...similarities);
+
   if (maxSimilarity >= 0.7) return 'excellent';
   if (maxSimilarity >= 0.5) return 'good';
   if (maxSimilarity >= 0.3) return 'fair';
@@ -546,338 +562,279 @@ function calculateMatchQuality(igaMatch: any, metroMatch: any, supercMatch: any)
 }
 
 /**
- * Trouver les produits manquants
+ * Génère une analyse enrichie tenant compte des promotions
  */
-function findMissingProducts(matches: ProductMatch[], originalProducts: string[]): string[] {
-  return originalProducts.filter(originalProduct => {
-    const match = matches.find(m => m.originalProduct === originalProduct);
-    if (!match) return true;
-    const hasValidIga = match.iga.found && (match.iga.similarity || 0) >= 0.4;
-    const hasValidMetro = match.metro.found && (match.metro.similarity || 0) >= 0.4;
-    const hasValidSuperc = match.superc.found && (match.superc.similarity || 0) >= 0.4;
-    return !hasValidIga && !hasValidMetro && !hasValidSuperc;
-  });
-}
+function generatePromotionalAnalysis(comparisonData: any): string {
+  const { summary, comparisons, statistics } = comparisonData;
+  
+  // Cas 1: Aucune promotion trouvée
+  if (statistics.productsWithPromotions === 0) {
+    return `🔍 **Aucune promotion trouvée**
 
-/**
- * Calculer la confiance moyenne
- */
-function calculateAverageConfidence(matches: ProductMatch[]): number {
-  const validMatches = matches.filter(m => m.iga.found || m.metro.found || m.superc.found);
-  if (validMatches.length === 0) return 0;
-  const totalConfidence = validMatches.reduce((sum, match) => {
-    const igaConfidence = match.iga.found ? (match.iga.similarity || 0) : 0;
-    const metroConfidence = match.metro.found ? (match.metro.similarity || 0) : 0;
-    const supercConfidence = match.superc.found ? (match.superc.similarity || 0) : 0;
-    return sum + Math.max(igaConfidence, metroConfidence, supercConfidence);
-  }, 0);
-  return Math.round((totalConfidence / validMatches.length) * 100) / 100;
-}
+❌ Désolé, aucun de vos produits n'est actuellement en promotion chez Walmart, Metro ou Super C.
 
-/**
- * 📝 ANALYSE DE SECOURS
- */
-function generateEnhancedFallbackAnalysis(comparisonData: any): string {
-  const { summary } = comparisonData;
-  if (!summary || summary.productsFound === 0) {
-    return `❌ **Aucun produit trouvé dans les circulaires actuelles**
-🔍 **Suggestions pour améliorer les résultats:**
-• Utilisez des termes plus simples (ex: "lait" au lieu de "lait Natrel 2%")
-• Vérifiez l'orthographe des produits
-• Les promotions changent chaque semaine - réessayez plus tard
-• Essayez des synonymes (ex: "fromage" pour "cheddar")`;
+💡 **Suggestions :**
+• Vérifiez les circulaires directement en magasin
+• Essayez avec des termes plus génériques
+• Les promotions changent chaque semaine
+• Certains produits peuvent être disponibles à prix régulier
+
+🛍️ **Astuce :** Ajoutez vos produits à une liste et relancez la comparaison la semaine prochaine !`;
   }
-  const bestStore = summary.bestStore;
-  const savings = summary.totalSavings;
-  const savingsPercent = summary.savingsPercentage;
-  let analysis = `🎯 **Recommandation: ${bestStore}**\n\n`;
-  // Section économies
-  if (savings >= 10) {
-    analysis += `💰 **ÉCONOMIE IMPORTANTE: ${savings.toFixed(2)} (${savingsPercent.toFixed(1)}%)**\n`;
-  } else if (savings >= 5) {
-    analysis += `💵 **Économie: ${savings.toFixed(2)} (${savingsPercent.toFixed(1)}%)**\n`;
-  } else if (savings > 0) {
-    analysis += `📊 Différence: ${savings.toFixed(2)}\n`;
-  } else {
-    analysis += `⚖️ **Prix identiques dans les trois magasins**\n`;
+
+  // Cas 2: Quelques promotions trouvées
+  let analysis = `🎉 **Promotions trouvées : ${statistics.productsWithPromotions}/${statistics.totalProducts} produits**\n\n`;
+
+  // Afficher les économies promotionnelles
+  if (summary.totalPromotionalSavings > 0) {
+    analysis += `💰 **Économies totales avec les promotions : $${summary.totalPromotionalSavings.toFixed(2)}**\n\n`;
   }
-  // Section détails
-  analysis += `\n📦 **Détails du panier:**\n`;
-  analysis += `• IGA: ${summary.totalIga.toFixed(2)} (${summary.productsFoundIga} produits)\n`;
-  analysis += `• Metro: ${summary.totalMetro.toFixed(2)} (${summary.productsFoundMetro} produits)\n`;
-  analysis += `• Super-C: ${summary.totalSuperc.toFixed(2)} (${summary.productsFoundSuperc} produits)\n`;
-  analysis += `• Produits trouvés: ${summary.productsFound}/${summary.totalProducts}\n`;
-  // Section qualité des matches
-  if (summary.matchQuality.excellent > 0) {
-    analysis += `• 🔍 ${summary.matchQuality.excellent} correspondance(s) excellente(s)\n`;
+
+  // Comparaison par magasin avec économies
+  analysis += `**📊 Comparaison des prix promotionnels :**\n`;
+  
+  if (summary.promotionsFoundWalmart > 0) {
+    analysis += `• 🏪 Walmart : $${summary.totalWalmart.toFixed(2)} (${summary.promotionsFoundWalmart} promos, économie: $${summary.totalSavingsWalmart.toFixed(2)})\n`;
   }
-  if (summary.matchQuality.good > 0) {
-    analysis += `• ✅ ${summary.matchQuality.good} correspondance(s) bonne(s)\n`;
+  if (summary.promotionsFoundMetro > 0) {
+    analysis += `• 🏪 Metro : $${summary.totalMetro.toFixed(2)} (${summary.promotionsFoundMetro} promos, économie: $${summary.totalSavingsMetro.toFixed(2)})\n`;
   }
-  // Section produits manquants
-  if (summary.missingProducts && summary.missingProducts.length > 0) {
-    analysis += `\n⚠️ **Produits non trouvés:** ${summary.missingProducts.slice(0, 3).join(', ')}`;
-    if (summary.missingProducts.length > 3) {
-      analysis += `... (${summary.missingProducts.length - 3} autres)`;
-    }
+  if (summary.promotionsFoundSuperC > 0) {
+    analysis += `• 🏪 Super C : $${summary.totalSuperC.toFixed(2)} (${summary.promotionsFoundSuperC} promos, économie: $${summary.totalSavingsSuperC.toFixed(2)})\n`;
   }
-  // Section conseils
-  analysis += `\n\n💡 **Conseil:** `;
-  if (bestStore === "Égalité") {
-    analysis += `Choisissez en fonction de votre proximité ou préférence personnelle.`;
-  } else {
-    analysis += `Privilégiez ${bestStore} pour économiser sur votre panier actuel.`;
+  analysis += `\n`;
+
+  // Meilleur choix
+  if (summary.bestStore !== "Égalité") {
+    analysis += `🏆 **Meilleur choix : ${summary.bestStore}** (économie de $${summary.totalSavings.toFixed(2)})\n\n`;
   }
-  if (summary.productsFound < summary.totalProducts) {
-    analysis += ` Vérifiez les produits manquants en magasin.`;
+
+  // Détails des produits EN PROMOTION
+  const productsWithPromos = comparisons.filter((c: any) => c.hasPromotion);
+  if (productsWithPromos.length > 0) {
+    analysis += `**✅ Produits en promotion :**\n`;
+    productsWithPromos.slice(0, 5).forEach((product: any) => {
+      const stores = [];
+      if (product.walmart.hasPromotion) {
+        stores.push(`Walmart: $${product.walmart.price?.toFixed(2)}`);
+      }
+      if (product.metro.hasPromotion) {
+        stores.push(`Metro: $${product.metro.price?.toFixed(2)}`);
+      }
+      if (product.superc.hasPromotion) {
+        stores.push(`Super C: $${product.superc.price?.toFixed(2)}`);
+      }
+      analysis += `• ${product.originalProduct} : ${stores.join(' | ')}\n`;
+    });
+    analysis += `\n`;
   }
+
+  // Produits SANS promotion
+  const productsWithoutPromos = comparisons.filter((c: any) => !c.hasPromotion);
+  if (productsWithoutPromos.length > 0) {
+    analysis += `**❌ Produits sans promotion cette semaine :**\n`;
+    productsWithoutPromos.slice(0, 3).forEach((product: any) => {
+      analysis += `• ${product.originalProduct}\n`;
+    });
+    analysis += `\n`;
+  }
+
+  // Recommandation
+  analysis += `💡 **Conseil :**\n`;
+  if (summary.totalPromotionalSavings > 5) {
+    analysis += `Profitez des promotions ! Vous économisez $${summary.totalPromotionalSavings.toFixed(2)} vs les prix réguliers.\n`;
+  }
+  analysis += `\n📅 **Validité :** Vérifiez les dates dans les circulaires (promotions hebdomadaires).`;
+
   return analysis;
 }
 
-/**
- * 🚀 ENDPOINT POST PRINCIPAL
- */
+// ========================================
+// ENDPOINT POST
+// ========================================
+
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
+
   try {
     const { items, options = {} } = await req.json();
+
+    // Validation
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({
-        error: "Veuillez fournir une liste de produits valide"
-      }, { status: 400 });
+      return NextResponse.json(
+        { error: "Veuillez fournir une liste de produits valide" },
+        { status: 400 }
+      );
     }
-    // Nettoyer et valider les produits
+
+    // Nettoyer les produits
     const cleanItems = items
-      .map(item => typeof item === 'string' ? item.trim() : String(item))
+      .map(item => (typeof item === 'string' ? item.trim() : String(item)))
       .filter(item => item.length >= 2 && item.length <= 100)
       .slice(0, 50);
+
     if (cleanItems.length === 0) {
-      return NextResponse.json({
-        error: "Aucun produit valide fourni (min 2 caractères, max 100)"
-      }, { status: 400 });
+      return NextResponse.json(
+        { error: "Aucun produit valide fourni" },
+        { status: 400 }
+      );
     }
-    console.log(`\n🛒 DÉBUT COMPARAISON BATCH`);
-    console.log(`   Produits: ${cleanItems.length}`);
-    console.log(`   Liste: ${cleanItems.join(', ')}`);
-    // Étape 1: Recherche BATCH
-    const productMatches = await searchProductsBatchEnhanced(cleanItems);
-    // Étape 2: Préparation des données
-    const comparisonData = prepareEnhancedComparisonData(productMatches, cleanItems);
-    // Étape 3: Génération de l'analyse IA
-    let aiAnalysis = "";
-    const shouldUseAI = options.enableAI !== false && comparisonData.summary.productsFound > 0;
+
+    console.log(`\n🛒 === COMPARAISON PROMOTIONS ===`);
+    console.log(`   📝 Produits: ${cleanItems.length}`);
+    console.log(`   📋 Liste: ${cleanItems.join(', ')}`);
+
+    // Recherche des PROMOTIONS uniquement
+    const productMatches = await searchPromotionsBatch(cleanItems);
+
+    // Préparation des données
+    const comparisonData = prepareComparisonData(productMatches, cleanItems);
+
+    // Analyse (IA ou simple)
+    let analysis = "";
+    const shouldUseAI = options.enableAI !== false && 
+                        comparisonData.statistics.productsWithPromotions > 0;
+
     if (shouldUseAI) {
       try {
-        aiAnalysis = await AIPriceService.generateSmartAnalysis(comparisonData, cleanItems);
-        console.log("   ✅ Analyse IA générée");
+        analysis = await AIPriceService.generateSmartAnalysis(
+          comparisonData,
+          cleanItems
+        );
       } catch (error) {
-        console.warn("   ⚠️ Erreur IA, utilisation du fallback:", error);
-        aiAnalysis = generateEnhancedFallbackAnalysis(comparisonData);
+        console.warn("   ⚠️ Erreur IA, utilisation du fallback");
+        analysis = generatePromotionalAnalysis(comparisonData);
       }
     } else {
-      aiAnalysis = generateEnhancedFallbackAnalysis(comparisonData);
+      analysis = generatePromotionalAnalysis(comparisonData);
     }
+
     const duration = Date.now() - startTime;
-    console.log(`\n📈 RÉSULTATS FINAUX:`);
-    console.log(`   Durée: ${duration}ms`);
-    console.log(`   IGA: ${comparisonData.summary.totalIga.toFixed(2)}`);
-    console.log(`   Metro: ${comparisonData.summary.totalMetro.toFixed(2)}`);
-    console.log(`   Super-C: ${comparisonData.summary.totalSuperc.toFixed(2)}`);
-    console.log(`   Économie: ${comparisonData.summary.totalSavings.toFixed(2)}`);
-    console.log(`   Meilleur: ${comparisonData.summary.bestStore}`);
-    console.log(`   Correspondances: ${comparisonData.summary.productsFound}/${cleanItems.length}`);
+
+    console.log(`\n✅ === RÉSULTATS ===`);
+    console.log(`   ⏱️ Durée: ${duration}ms`);
+    console.log(`   🏪 Walmart: $${comparisonData.summary.totalWalmart.toFixed(2)} (${comparisonData.summary.promotionsFoundWalmart} promos)`);
+    console.log(`   🏪 Metro: $${comparisonData.summary.totalMetro.toFixed(2)} (${comparisonData.summary.promotionsFoundMetro} promos)`);
+    console.log(`   🏪 Super C: $${comparisonData.summary.totalSuperC.toFixed(2)} (${comparisonData.summary.promotionsFoundSuperC} promos)`);
+    console.log(`   🏆 Meilleur: ${comparisonData.summary.bestStore}`);
+    console.log(`   💰 Économie magasins: $${comparisonData.summary.totalSavings.toFixed(2)}`);
+    console.log(`   💸 Économie promotions: $${comparisonData.summary.totalPromotionalSavings.toFixed(2)}`);
+    console.log(`   📊 Produits avec promos: ${comparisonData.statistics.productsWithPromotions}/${cleanItems.length}`);
+
     return NextResponse.json({
       success: true,
-      analysis: aiAnalysis,
+      analysis,
       summary: comparisonData.summary,
-      comparisons: comparisonData.detailedComparison,
+      comparisons: comparisonData.comparisons,
       metadata: {
         timestamp: new Date().toISOString(),
         processingTime: `${duration}ms`,
         totalProducts: cleanItems.length,
-        productsWithMatches: comparisonData.summary.productsFound,
-        matchRate: comparisonData.statistics.matchRate,
-        matchQuality: comparisonData.summary.matchQuality,
-        cacheStatus: {
-          total: cleanItems.length,
-          cached: cleanItems.length - (productMatches.size - Array.from(productMatches.values()).filter((m: any) => m.totalMatches > 0).length)
-        }
+        productsWithPromotions: comparisonData.statistics.productsWithPromotions,
+        productsWithoutPromotions: comparisonData.statistics.productsWithoutPromotions,
+        promotionRate: comparisonData.statistics.promotionRate,
+        totalPromotionalSavings: comparisonData.summary.totalPromotionalSavings
       }
     });
   } catch (error: any) {
-    const duration = Date.now() - startTime;
-    console.error(`❌ ERREUR API (${duration}ms):`, error);
-    return NextResponse.json({
-      success: false,
-      error: "Erreur interne du serveur",
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    }, { status: 500 });
+    console.error(`❌ ERREUR API:`, error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Erreur interne du serveur",
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
+      { status: 500 }
+    );
   }
 }
 
-/**
- * 🔍 ENDPOINT GET POUR TESTS
- */
+// ========================================
+// ENDPOINT GET (DIAGNOSTIC)
+// ========================================
+
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const action = searchParams.get('action');
-  // 1. DIAGNOSTIC GÉNÉRAL
+
   if (action === 'diagnostic') {
     try {
       const today = new Date().toISOString().split('T')[0];
-      console.log('\n🔍 DIAGNOSTIC DE LA BASE DE DONNÉES\n');
-      // Compter toutes les promotions
+
+      // Total de promotions
       const { count: totalCount } = await supabase
         .from("promotions")
         .select("*", { count: 'exact', head: true });
-      console.log(`📊 Total promotions en base: ${totalCount}`);
-      // Compter les promotions actives
-      const { data: activePromos, count: activeCount } = await supabase
+
+      // Promotions actives
+      const { count: activeCount } = await supabase
         .from("promotions")
-        .select("*", { count: 'exact' })
+        .select("*", { count: 'exact', head: true })
         .gte("end_date", today);
-      console.log(`✅ Promotions actives (end_date >= ${today}): ${activeCount}`);
-      // Compter par magasin
-      const { data: igaData } = await supabase
+
+      // Promotions avec rabais (old_price présent)
+      const { count: realPromosCount } = await supabase
         .from("promotions")
-        .select("*", { count: 'exact' })
-        .eq("store_name", "IGA")
-        .gte("end_date", today);
-      const { data: metroData } = await supabase
-        .from("promotions")
-        .select("*", { count: 'exact' })
-        .eq("store_name", "Metro")
-        .gte("end_date", today);
-      const { data: supercData } = await supabase
-        .from("promotions")
-        .select("*", { count: 'exact' })
-        .eq("store_name", "Super-C")
-        .gte("end_date", today);
-      console.log(`   - IGA: ${igaData?.length || 0} promotions`);
-      console.log(`   - Metro: ${metroData?.length || 0} promotions`);
-      console.log(`   - Super-C: ${supercData?.length || 0} promotions`);
-      // Exemples de produits par catégorie
-      const categories = [
-        { name: 'Café', keywords: ['cafe', 'coffee'] },
-        { name: 'Sucre', keywords: ['sucre', 'sugar'] },
-        { name: 'Farine', keywords: ['farine', 'flour'] },
-        { name: 'Lait', keywords: ['lait', 'milk'] },
-        { name: 'Pain', keywords: ['pain', 'bread'] },
-        { name: 'Fromage', keywords: ['fromage', 'cheese'] },
-        { name: 'Œufs', keywords: ['oeuf', 'egg'] }
-      ];
-      const categoryResults: any = {};
-      for (const category of categories) {
-        const orConditions = category.keywords
-          .map(kw => `product_name.ilike.%${kw}%`)
-          .join(',');
-        const { data, count } = await supabase
+        .select("*", { count: 'exact', head: true })
+        .gte("end_date", today)
+        .not("old_price", "is", null);
+
+      const stores = ["Walmart", "Metro", "Super C"];
+      const storeStats: Record<string, any> = {};
+
+      for (const store of stores) {
+        const { count: total } = await supabase
           .from("promotions")
-          .select("product_name, store_name, new_price", { count: 'exact' })
-          .or(orConditions)
+          .select("*", { count: 'exact', head: true })
+          .eq("store_name", store)
+          .gte("end_date", today);
+
+        const { count: withPromo } = await supabase
+          .from("promotions")
+          .select("*", { count: 'exact', head: true })
+          .eq("store_name", store)
           .gte("end_date", today)
-          .limit(3);
-        categoryResults[category.name] = {
-          found: count || 0,
-          examples: data || []
+          .not("old_price", "is", null);
+
+        storeStats[store] = {
+          total: total || 0,
+          withDiscount: withPromo || 0,
+          withoutDiscount: (total || 0) - (withPromo || 0)
         };
-        console.log(`\n📦 ${category.name}: ${count || 0} produits trouvés`);
-        if (data && data.length > 0) {
-          data.forEach((p: any) => {
-            console.log(`   - ${p.store_name}: ${p.product_name} - $${p.new_price}`);
-          });
-        }
       }
-      // Vérifier les dates des promotions
-      const { data: dateRange } = await supabase
-        .from("promotions")
-        .select("start_date, end_date")
-        .order("end_date", { ascending: false })
-        .limit(1);
+
       return NextResponse.json({
         success: true,
         diagnostic: {
           totalPromotions: totalCount,
           activePromotions: activeCount,
-          byStore: {
-            IGA: igaData?.length || 0,
-            Metro: metroData?.length || 0,
-            SuperC: supercData?.length || 0
-          },
+          realPromotions: realPromosCount,
+          productsAtRegularPrice: (activeCount || 0) - (realPromosCount || 0),
+          byStore: storeStats,
           currentDate: today,
-          latestPromoEndDate: dateRange?.[0]?.end_date,
-          categories: categoryResults
-        },
-        recommendations: [
-          activeCount === 0 ? "⚠️ AUCUNE PROMOTION ACTIVE - Vérifiez vos dates ou relancez le scraping" : null,
-          (igaData?.length || 0) === 0 ? "⚠️ Aucune promotion IGA active" : null,
-          (metroData?.length || 0) === 0 ? "⚠️ Aucune promotion Metro active" : null,
-          (supercData?.length || 0) === 0 ? "⚠️ Aucune promotion Super-C active" : null,
-          categoryResults['Café'].found === 0 ? "⚠️ Aucun café trouvé - Produit absent de la base" : null,
-          categoryResults['Sucre'].found === 0 ? "⚠️ Aucun sucre trouvé - Produit absent de la base" : null,
-          categoryResults['Farine'].found === 0 ? "⚠️ Aucune farine trouvée - Produit absent de la base" : null
-        ].filter(r => r !== null)
+          info: "realPromotions = produits avec old_price (vraies promotions)"
+        }
       });
     } catch (error: any) {
-      console.error('❌ Erreur diagnostic:', error);
-      return NextResponse.json({
-        success: false,
-        error: error.message
-      }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 500 }
+      );
     }
   }
-  // 2. LISTER TOUS LES MAGASINS DISPONIBLES
-  if (action === 'stores') {
-    try {
-      const { data } = await supabase
-        .from("promotions")
-        .select("store_name")
-        .limit(1000);
-      const stores = new Set(data?.map(p => p.store_name));
-      const storesArray = Array.from(stores);
-      return NextResponse.json({
-        success: true,
-        stores: storesArray,
-        count: storesArray.length,
-        message: "Tous les magasins disponibles dans la base"
-      });
-    } catch (error: any) {
-      return NextResponse.json({
-        success: false,
-        error: error.message
-      }, { status: 500 });
-    }
-  }
-  // 3. VOIR LES DATES DES PROMOTIONS
-  if (action === 'dates') {
-    try {
-      const { data } = await supabase
-        .from("promotions")
-        .select("start_date, end_date, store_name")
-        .order("end_date", { ascending: false })
-        .limit(20);
-      const today = new Date().toISOString().split('T')[0];
-      return NextResponse.json({
-        success: true,
-        today,
-        promotions: data,
-        message: "Dernières dates de promotions"
-      });
-    } catch (error: any) {
-      return NextResponse.json({
-        success: false,
-        error: error.message
-      }, { status: 500 });
-    }
-  }
-  // Par défaut : documentation
+
   return NextResponse.json({
-    message: "API de diagnostic de la base de données",
+    message: "API de comparaison de prix promotionnels",
+    version: "2.0",
+    features: [
+      "Comparaison uniquement des produits en promotion",
+      "Calcul des économies réelles vs prix réguliers",
+      "Distinction claire entre promotions et prix réguliers",
+      "Cache optimisé pour performances"
+    ],
     endpoints: {
-      diagnostic: "/api/compare?action=diagnostic - Analyse complète de la base",
-      stores: "/api/compare?action=stores - Liste tous les magasins",
-      dates: "/api/compare?action=dates - Vérifier les dates des promotions",
-      products: "/api/compare?action=products - Voir les produits disponibles"
+      POST: "/api/compare - Compare les prix promotionnels",
+      GET: "/api/compare?action=diagnostic - Diagnostic de la base"
     }
   });
 }

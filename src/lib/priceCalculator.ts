@@ -1,732 +1,415 @@
-// lib/priceCalculator.ts - VERSION FINALE AVEC SUPER C
+// lib/priceCalculator.ts
+/**
+ * Service de calcul et comparaison de prix
+ * Supporte 3 magasins: Walmart, Metro, Super C
+ */
+
+// ========================================
+// TYPES ET INTERFACES
+// ========================================
 
 export interface PriceComparison {
   product: string;
-  igaPrice: number | null;
+  walmartPrice: number | null;
   metroPrice: number | null;
-  supercPrice: number | null;  // 🔥 AJOUTÉ
+  supercPrice: number | null;
   bestPrice: number | null;
-  bestStore: "IGA" | "Metro" | "Super C" | null;  // 🔥 MODIFIÉ
+  bestStore: "Walmart" | "Metro" | "Super C" | null;
   savings: number;
   savingsPercentage: number;
-  unit: string;
   confidence: number;
-  unitPrice?: {
-    iga: number | null;
-    metro: number | null;
-    superc: number | null;  // 🔥 AJOUTÉ
-  };
 }
 
 export interface StoreComparison {
-  store: "IGA" | "Metro" | "Super C";  // 🔥 MODIFIÉ
+  store: "Walmart" | "Metro" | "Super C";
+  totalPrice: number;
   savings: number;
   savingsPercentage: number;
-  totalItems: number;
+  productsFound: number;
   cheaperItems: number;
 }
 
+export interface ComparisonSummary {
+  totalWalmart: number;
+  totalMetro: number;
+  totalSuperC: number;
+  bestStore: "Walmart" | "Metro" | "Super C" | "Égalité";
+  totalSavings: number;
+  savingsPercentage: number;
+  productsFound: number;
+  totalProducts: number;
+  productsFoundWalmart: number;
+  productsFoundMetro: number;
+  productsFoundSuperC: number;
+}
+
+// ========================================
+// CONFIGURATION
+// ========================================
+
+const CONFIG = {
+  PRECISION: 100, // 2 décimales
+  TAX_RATE: 0.14975, // TPS + TVQ Québec
+  MIN_VALID_PRICE: 0.01,
+  MAX_VALID_PRICE: 1000
+};
+
+// ========================================
+// FONCTIONS UTILITAIRES
+// ========================================
+
 /**
- * Calculateur de prix optimisé avec précision au cent
+ * Arrondit un nombre avec précision garantie
  */
-export class PriceCalculator {
-  private static readonly PRECISION = 100; // 2 décimales
-  private static readonly TAX_RATE = 0.14975; // TPS + TVQ Québec
-
-  /**
-   * Arrondir avec précision garantie
-   */
-  private static round(value: number): number {
-    return Math.round(value * this.PRECISION) / this.PRECISION;
-  }
-
-  /**
-   * Calcul total optimisé avec validation
-   */
-  static calculateTotal(prices: (number | null)[]): number {
-    if (!prices || prices.length === 0) return 0;
-    
-    const sum = prices.reduce((acc, price) => {
-      if (price !== null && price > 0 && isFinite(price)) {
-        return acc + price;
-      }
-      return acc;
-    }, 0);
-    
-    return this.round(sum);
-  }
-
-  /**
-   * 🔥 NOUVEAU: Calcul des économies pour 3+ magasins
-   */
-  static calculateSavingsMultiStore(...prices: (number | null)[]): number {
-    const validPrices = prices.filter(this.isValidPrice);
-    if (validPrices.length < 2) return 0;
-    
-    const min = Math.min(...validPrices);
-    const max = Math.max(...validPrices);
-    
-    return this.round(max - min);
-  }
-
-  /**
-   * Calcul des économies avec validation (2 magasins - rétrocompatible)
-   */
-  static calculateSavings(igaPrice: number | null, metroPrice: number | null): number {
-    if (!this.isValidPrice(igaPrice) || !this.isValidPrice(metroPrice)) {
-      return 0;
-    }
-    
-    return this.round(Math.abs(igaPrice! - metroPrice!));
-  }
-
-  /**
-   * Calcul du pourcentage d'économie précis
-   */
-  static calculateSavingsPercentage(savings: number, basePrice: number): number {
-    if (basePrice <= 0 || savings <= 0) return 0;
-    return this.round((savings / basePrice) * 100);
-  }
-
-  /**
-   * 🔥 NOUVEAU: Déterminer le meilleur magasin parmi 3+
-   */
-  static determineBestStoreMulti(
-    storeTotals: Array<{ store: "IGA" | "Metro" | "Super C"; total: number }>,
-    itemCount: number = 0
-  ): StoreComparison {
-    const validStores = storeTotals.filter(s => s.total > 0);
-    
-    if (validStores.length === 0) {
-      return {
-        store: "IGA",
-        savings: 0,
-        savingsPercentage: 0,
-        totalItems: itemCount,
-        cheaperItems: 0
-      };
-    }
-
-    validStores.sort((a, b) => a.total - b.total);
-    
-    const bestStore = validStores[0];
-    const worstStore = validStores[validStores.length - 1];
-    const savings = this.round(worstStore.total - bestStore.total);
-    
-    return {
-      store: bestStore.store,
-      savings,
-      savingsPercentage: this.calculateSavingsPercentage(savings, worstStore.total),
-      totalItems: itemCount,
-      cheaperItems: 0
-    };
-  }
-
-  /**
-   * Déterminer le meilleur magasin (2 magasins - rétrocompatible)
-   */
-  static determineBestStore(
-    igaTotal: number,
-    metroTotal: number,
-    itemCount: number = 0
-  ): StoreComparison {
-    const igaTotalRounded = this.round(igaTotal);
-    const metroTotalRounded = this.round(metroTotal);
-    
-    if (igaTotalRounded < metroTotalRounded) {
-      const savings = this.round(metroTotalRounded - igaTotalRounded);
-      return {
-        store: "IGA",
-        savings,
-        savingsPercentage: this.calculateSavingsPercentage(savings, metroTotalRounded),
-        totalItems: itemCount,
-        cheaperItems: 0
-      };
-    } else if (metroTotalRounded < igaTotalRounded) {
-      const savings = this.round(igaTotalRounded - metroTotalRounded);
-      return {
-        store: "Metro",
-        savings,
-        savingsPercentage: this.calculateSavingsPercentage(savings, igaTotalRounded),
-        totalItems: itemCount,
-        cheaperItems: 0
-      };
-    }
-    
-    return {
-      store: "IGA",
-      savings: 0,
-      savingsPercentage: 0,
-      totalItems: itemCount,
-      cheaperItems: 0
-    };
-  }
-
-  /**
-   * 🔥 NOUVEAU: Comparaison détaillée avec 3 magasins
-   */
-  static compareProductsMultiStore(
-    products: Array<{ 
-      name: string; 
-      igaPrice: number | null; 
-      metroPrice: number | null; 
-      supercPrice: number | null;
-      unit?: string 
-    }>
-  ): {
-    comparisons: PriceComparison[];
-    igaTotal: number;
-    metroTotal: number;
-    supercTotal: number;
-    bestStore: StoreComparison;
-  } {
-    const comparisons: PriceComparison[] = [];
-    let igaTotal = 0;
-    let metroTotal = 0;
-    let supercTotal = 0;
-    const storeCheaperCount = { IGA: 0, Metro: 0, "Super C": 0 };
-
-    for (const product of products) {
-      const { name, igaPrice, metroPrice, supercPrice, unit = "unité" } = product;
-      
-      const savings = this.calculateSavingsMultiStore(igaPrice, metroPrice, supercPrice);
-      const bestPrice = this.getBestPriceMulti(igaPrice, metroPrice, supercPrice);
-      const bestStore = this.getBestStoreForProductMulti(igaPrice, metroPrice, supercPrice);
-      
-      if (bestStore && savings > 0) {
-        storeCheaperCount[bestStore]++;
-      }
-      
-      if (this.isValidPrice(igaPrice)) igaTotal += igaPrice!;
-      if (this.isValidPrice(metroPrice)) metroTotal += metroPrice!;
-      if (this.isValidPrice(supercPrice)) supercTotal += supercPrice!;
-      
-      const allPrices = [igaPrice, metroPrice, supercPrice].filter(this.isValidPrice);
-      const higherPrice = allPrices.length > 0 ? Math.max(...allPrices) : 0;
-      const savingsPercentage = this.calculateSavingsPercentage(savings, higherPrice);
-      
-      comparisons.push({
-        product: name,
-        igaPrice,
-        metroPrice,
-        supercPrice,
-        bestPrice,
-        bestStore,
-        savings,
-        savingsPercentage,
-        unit,
-        confidence: this.calculateConfidenceMulti(igaPrice, metroPrice, supercPrice)
-      });
-    }
-
-    const bestStoreResult = this.determineBestStoreMulti([
-      { store: "IGA", total: igaTotal },
-      { store: "Metro", total: metroTotal },
-      { store: "Super C", total: supercTotal }
-    ], products.length);
-    
-    bestStoreResult.cheaperItems = storeCheaperCount[bestStoreResult.store];
-
-    return {
-      comparisons,
-      igaTotal: this.round(igaTotal),
-      metroTotal: this.round(metroTotal),
-      supercTotal: this.round(supercTotal),
-      bestStore: bestStoreResult
-    };
-  }
-
-  /**
-   * Comparaison détaillée (2 magasins - rétrocompatible)
-   */
-  static compareProducts(
-    products: Array<{ name: string; igaPrice: number | null; metroPrice: number | null; unit?: string }>
-  ): {
-    comparisons: PriceComparison[];
-    igaTotal: number;
-    metroTotal: number;
-    bestStore: StoreComparison;
-  } {
-    const comparisons: PriceComparison[] = [];
-    let igaTotal = 0;
-    let metroTotal = 0;
-    let igaCheaperCount = 0;
-    let metroCheaperCount = 0;
-
-    for (const product of products) {
-      const { name, igaPrice, metroPrice, unit = "unité" } = product;
-      
-      const savings = this.calculateSavings(igaPrice, metroPrice);
-      const bestPrice = this.getBestPrice(igaPrice, metroPrice);
-      const bestStore = this.getBestStoreForProduct(igaPrice, metroPrice);
-      
-      if (bestStore === "IGA" && savings > 0) igaCheaperCount++;
-      if (bestStore === "Metro" && savings > 0) metroCheaperCount++;
-      
-      if (this.isValidPrice(igaPrice)) igaTotal += igaPrice!;
-      if (this.isValidPrice(metroPrice)) metroTotal += metroPrice!;
-      
-      const higherPrice = Math.max(igaPrice || 0, metroPrice || 0);
-      const savingsPercentage = this.calculateSavingsPercentage(savings, higherPrice);
-      
-      comparisons.push({
-        product: name,
-        igaPrice,
-        metroPrice,
-        supercPrice: null,  // 🔥 AJOUTÉ pour compatibilité
-        bestPrice,
-        bestStore,
-        savings,
-        savingsPercentage,
-        unit,
-        confidence: this.calculateConfidence(igaPrice, metroPrice)
-      });
-    }
-
-    const bestStoreResult = this.determineBestStore(igaTotal, metroTotal, products.length);
-    bestStoreResult.cheaperItems = bestStoreResult.store === "IGA" ? igaCheaperCount : metroCheaperCount;
-
-    return {
-      comparisons,
-      igaTotal: this.round(igaTotal),
-      metroTotal: this.round(metroTotal),
-      bestStore: bestStoreResult
-    };
-  }
-
-  /**
-   * 🔥 NOUVEAU: Obtenir le meilleur prix parmi 3 magasins
-   */
-  private static getBestPriceMulti(
-    igaPrice: number | null, 
-    metroPrice: number | null,
-    supercPrice: number | null
-  ): number | null {
-    const prices = [igaPrice, metroPrice, supercPrice].filter(this.isValidPrice);
-    return prices.length > 0 ? Math.min(...prices) : null;
-  }
-
-  /**
-   * 🔥 NOUVEAU: Obtenir le meilleur magasin parmi 3
-   */
-  private static getBestStoreForProductMulti(
-    igaPrice: number | null,
-    metroPrice: number | null,
-    supercPrice: number | null
-  ): "IGA" | "Metro" | "Super C" | null {
-    const stores = [
-      { name: "IGA" as const, price: igaPrice },
-      { name: "Metro" as const, price: metroPrice },
-      { name: "Super C" as const, price: supercPrice }
-    ].filter(s => this.isValidPrice(s.price));
-
-    if (stores.length === 0) return null;
-
-    stores.sort((a, b) => a.price! - b.price!);
-    return stores[0].name;
-  }
-
-  private static getBestPrice(igaPrice: number | null, metroPrice: number | null): number | null {
-    if (!this.isValidPrice(igaPrice) && !this.isValidPrice(metroPrice)) return null;
-    if (!this.isValidPrice(igaPrice)) return metroPrice;
-    if (!this.isValidPrice(metroPrice)) return igaPrice;
-    return Math.min(igaPrice!, metroPrice!);
-  }
-
-  private static getBestStoreForProduct(
-    igaPrice: number | null,
-    metroPrice: number | null
-  ): "IGA" | "Metro" | null {
-    if (!this.isValidPrice(igaPrice) && !this.isValidPrice(metroPrice)) return null;
-    if (!this.isValidPrice(igaPrice)) return "Metro";
-    if (!this.isValidPrice(metroPrice)) return "IGA";
-    return igaPrice! <= metroPrice! ? "IGA" : "Metro";
-  }
-
-  /**
-   * 🔥 NOUVEAU: Calculer la confiance pour 3 magasins
-   */
-  private static calculateConfidenceMulti(
-    igaPrice: number | null,
-    metroPrice: number | null,
-    supercPrice: number | null
-  ): number {
-    const validCount = [igaPrice, metroPrice, supercPrice].filter(this.isValidPrice).length;
-    
-    if (validCount === 3) return 100;
-    if (validCount === 2) return 75;
-    if (validCount === 1) return 50;
-    return 0;
-  }
-
-  private static calculateConfidence(igaPrice: number | null, metroPrice: number | null): number {
-    if (this.isValidPrice(igaPrice) && this.isValidPrice(metroPrice)) return 100;
-    if (this.isValidPrice(igaPrice) || this.isValidPrice(metroPrice)) return 50;
-    return 0;
-  }
-
-  private static isValidPrice(price: number | null | undefined): price is number {
-    return price !== null && price !== undefined && price > 0 && isFinite(price);
-  }
-
-  static isDataFresh(lastUpdated: string | Date, maxAgeHours: number = 24): boolean {
-    try {
-      const lastUpdate = lastUpdated instanceof Date ? lastUpdated : new Date(lastUpdated);
-      const ageMs = Date.now() - lastUpdate.getTime();
-      return ageMs < maxAgeHours * 3600000;
-    } catch {
-      return false;
-    }
-  }
-
-  static formatPrice(price: number | null, withSymbol: boolean = true): string {
-    if (!this.isValidPrice(price)) return "N/A";
-    const formatted = price!.toFixed(2);
-    return withSymbol ? `$${formatted}` : formatted;
-  }
-
-  static calculateUnitPrice(price: number, quantity: number, unit: string): string {
-    if (!this.isValidPrice(price) || quantity <= 0) return "N/A";
-    const unitPrice = this.round(price / quantity);
-    return `${this.formatPrice(unitPrice)}/${unit}`;
-  }
-
-  static applyTax(amount: number, includeTax: boolean = true): number {
-    if (!includeTax || !this.isValidPrice(amount)) return amount;
-    return this.round(amount * (1 + this.TAX_RATE));
-  }
-
-  static calculateAnnualSavings(weeklySavings: number, weeks: number = 52): number {
-    if (!this.isValidPrice(weeklySavings)) return 0;
-    return this.round(weeklySavings * weeks);
-  }
+function round(value: number): number {
+  return Math.round(value * CONFIG.PRECISION) / CONFIG.PRECISION;
 }
 
 /**
- * Gestionnaire de cache optimisé avec LRU et opérations BATCH
+ * Vérifie si un prix est valide
  */
-export class PriceCache {
-  private static cache = new Map<string, CacheEntry>();
-  private static accessOrder: string[] = [];
-  private static readonly MAX_SIZE = 1000;
-  private static readonly DEFAULT_TTL = 1800000; // 30 minutes
-  private static cleanupInterval: any = null;
+function isValidPrice(price: number | null | undefined): price is number {
+  return (
+    price !== null &&
+    price !== undefined &&
+    price >= CONFIG.MIN_VALID_PRICE &&
+    price <= CONFIG.MAX_VALID_PRICE &&
+    isFinite(price)
+  );
+}
 
-  static initialize(): void {
-    if (this.cleanupInterval === null && typeof setInterval !== 'undefined') {
-      this.cleanupInterval = setInterval(() => this.cleanup(), 300000);
+// ========================================
+// CALCULS DE BASE
+// ========================================
+
+/**
+ * Calcule le total d'une liste de prix
+ */
+export function calculateTotal(prices: (number | null)[]): number {
+  if (!prices || prices.length === 0) return 0;
+
+  const sum = prices.reduce((acc, price) => {
+    if (isValidPrice(price)) {
+      return acc + price;
+    }
+    return acc;
+  }, 0);
+
+  return round(sum);
+}
+
+/**
+ * Calcule les économies entre plusieurs prix
+ */
+export function calculateSavings(...prices: (number | null)[]): number {
+  const validPrices = prices.filter(isValidPrice);
+  if (validPrices.length < 2) return 0;
+
+  const min = Math.min(...validPrices);
+  const max = Math.max(...validPrices);
+
+  return round(max - min);
+}
+
+/**
+ * Calcule le pourcentage d'économie
+ */
+export function calculateSavingsPercentage(savings: number, basePrice: number): number {
+  if (basePrice <= 0 || savings <= 0) return 0;
+  return round((savings / basePrice) * 100);
+}
+
+// ========================================
+// DÉTERMIN ATION DU MEILLEUR MAGASIN
+// ========================================
+
+/**
+ * Détermine le magasin avec le meilleur prix total
+ */
+export function determineBestStore(
+  walmartTotal: number,
+  metroTotal: number,
+  supercTotal: number
+): "Walmart" | "Metro" | "Super C" | "Égalité" {
+  // Arrondir les totaux
+  const walmart = round(walmartTotal);
+  const metro = round(metroTotal);
+  const superc = round(supercTotal);
+
+  // Trouver le minimum
+  const minTotal = Math.min(walmart, metro, superc);
+
+  // Vérifier l'égalité (tolérance de 0.01$)
+  const tolerance = 0.01;
+  const isEqual =
+    Math.abs(walmart - metro) < tolerance &&
+    Math.abs(walmart - superc) < tolerance &&
+    Math.abs(metro - superc) < tolerance;
+
+  if (isEqual) return "Égalité";
+
+  // Retourner le magasin avec le prix minimum
+  if (Math.abs(walmart - minTotal) < tolerance) return "Walmart";
+  if (Math.abs(metro - minTotal) < tolerance) return "Metro";
+  if (Math.abs(superc - minTotal) < tolerance) return "Super C";
+
+  return "Walmart"; // Fallback
+}
+
+// ========================================
+// COMPARAISON DÉTAILLÉE
+// ========================================
+
+/**
+ * Compare les prix de plusieurs produits entre les 3 magasins
+ */
+export function compareProducts(
+  products: Array<{
+    name: string;
+    walmartPrice: number | null;
+    metroPrice: number | null;
+    supercPrice: number | null;
+  }>
+): {
+  comparisons: PriceComparison[];
+  summary: ComparisonSummary;
+} {
+  console.log(`\n💰 === COMPARAISON DES PRIX ===`);
+  console.log(`   📦 Produits à comparer: ${products.length}`);
+
+  const comparisons: PriceComparison[] = [];
+  let walmartTotal = 0;
+  let metroTotal = 0;
+  let supercTotal = 0;
+  let productsFound = 0;
+  let productsFoundWalmart = 0;
+  let productsFoundMetro = 0;
+  let productsFoundSuperC = 0;
+
+  const storeCheaperCount = {
+    Walmart: 0,
+    Metro: 0,
+    "Super C": 0
+  };
+
+  // Traiter chaque produit
+  for (const product of products) {
+    const { name, walmartPrice, metroPrice, supercPrice } = product;
+
+    // Calculer les économies
+    const savings = calculateSavings(walmartPrice, metroPrice, supercPrice);
+
+    // Trouver le meilleur prix
+    const validPrices = [
+      { store: "Walmart" as const, price: walmartPrice },
+      { store: "Metro" as const, price: metroPrice },
+      { store: "Super C" as const, price: supercPrice }
+    ].filter(p => isValidPrice(p.price)) as Array<{
+      store: "Walmart" | "Metro" | "Super C";
+      price: number;
+    }>;
+
+    let bestStore: "Walmart" | "Metro" | "Super C" | null = null;
+    let bestPrice: number | null = null;
+
+    if (validPrices.length > 0) {
+      validPrices.sort((a, b) => a.price - b.price);
+      bestStore = validPrices[0].store;
+      bestPrice = validPrices[0].price;
+
+      if (savings > 0) {
+        storeCheaperCount[bestStore]++;
+      }
+
+      productsFound++;
+    }
+
+    // Accumuler les totaux
+    if (isValidPrice(walmartPrice)) {
+      walmartTotal += walmartPrice;
+      productsFoundWalmart++;
+    }
+    if (isValidPrice(metroPrice)) {
+      metroTotal += metroPrice;
+      productsFoundMetro++;
+    }
+    if (isValidPrice(supercPrice)) {
+      supercTotal += supercPrice;
+      productsFoundSuperC++;
+    }
+
+    // Calculer le pourcentage d'économie
+    const maxPrice = validPrices.length > 0 ? Math.max(...validPrices.map(p => p.price)) : 0;
+    const savingsPercentage = calculateSavingsPercentage(savings, maxPrice);
+
+    // Calculer la confiance (pourcentage de magasins ayant le produit)
+    const storesWithProduct = [walmartPrice, metroPrice, supercPrice].filter(isValidPrice).length;
+    const confidence = Math.round((storesWithProduct / 3) * 100);
+
+    comparisons.push({
+      product: name,
+      walmartPrice,
+      metroPrice,
+      supercPrice,
+      bestPrice,
+      bestStore,
+      savings,
+      savingsPercentage,
+      confidence
+    });
+
+    // Log du résultat
+    if (bestStore) {
+      console.log(`   ✅ "${name}": ${bestStore} - $${bestPrice?.toFixed(2)}`);
+    } else {
+      console.log(`   ❌ "${name}": Non trouvé`);
     }
   }
 
+  // Calculer le résumé
+  const bestStore = determineBestStore(walmartTotal, metroTotal, supercTotal);
+  const totals = [walmartTotal, metroTotal, supercTotal].filter(t => t > 0);
+  const totalSavings = totals.length > 0 ? Math.max(...totals) - Math.min(...totals) : 0;
+  const savingsPercentage = totals.length > 0 ? calculateSavingsPercentage(totalSavings, Math.max(...totals)) : 0;
+
+  const summary: ComparisonSummary = {
+    totalWalmart: round(walmartTotal),
+    totalMetro: round(metroTotal),
+    totalSuperC: round(supercTotal),
+    bestStore,
+    totalSavings: round(totalSavings),
+    savingsPercentage,
+    productsFound,
+    totalProducts: products.length,
+    productsFoundWalmart,
+    productsFoundMetro,
+    productsFoundSuperC
+  };
+
+  console.log(`\n📊 === RÉSUMÉ ===`);
+  console.log(`   🏪 Walmart: $${summary.totalWalmart.toFixed(2)} (${productsFoundWalmart} produits)`);
+  console.log(`   🏪 Metro: $${summary.totalMetro.toFixed(2)} (${productsFoundMetro} produits)`);
+  console.log(`   🏪 Super C: $${summary.totalSuperC.toFixed(2)} (${productsFoundSuperC} produits)`);
+  console.log(`   🏆 Meilleur: ${bestStore}`);
+  console.log(`   💰 Économie: $${summary.totalSavings.toFixed(2)} (${savingsPercentage.toFixed(1)}%)`);
+
+  return {
+    comparisons,
+    summary
+  };
+}
+
+// ========================================
+// FORMATAGE
+// ========================================
+
+/**
+ * Formate un prix avec ou sans le symbole $
+ */
+export function formatPrice(price: number | null, withSymbol: boolean = true): string {
+  if (!isValidPrice(price)) return "N/A";
+  const formatted = price.toFixed(2);
+  return withSymbol ? `$${formatted}` : formatted;
+}
+
+/**
+ * Applique les taxes sur un montant
+ */
+export function applyTax(amount: number, includeTax: boolean = true): number {
+  if (!includeTax || !isValidPrice(amount)) return amount;
+  return round(amount * (1 + CONFIG.TAX_RATE));
+}
+
+/**
+ * Calcule les économies annuelles basées sur les économies hebdomadaires
+ */
+export function calculateAnnualSavings(weeklySavings: number, weeks: number = 52): number {
+  if (!isValidPrice(weeklySavings)) return 0;
+  return round(weeklySavings * weeks);
+}
+
+// ========================================
+// CACHE (OPTIONNEL)
+// ========================================
+
+export class PriceCache {
+  private static cache = new Map<string, any>();
+  private static readonly MAX_SIZE = 1000;
+  private static readonly DEFAULT_TTL = 1800000; // 30 minutes
+
+  /**
+   * Stocke une valeur dans le cache
+   */
   static set(key: string, data: any, ttl: number = this.DEFAULT_TTL): void {
-    if (this.cache.size >= this.MAX_SIZE && !this.cache.has(key)) {
-      const oldestKey = this.accessOrder.shift();
-      if (oldestKey) {
-        this.cache.delete(oldestKey);
-      }
+    // Limiter la taille du cache
+    if (this.cache.size >= this.MAX_SIZE) {
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
     }
 
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
-      ttl,
-      hits: 0
+      ttl
     });
-
-    this.updateAccessOrder(key);
   }
 
+  /**
+   * Récupère une valeur du cache
+   */
   static get(key: string): any | null {
     const entry = this.cache.get(key);
-    
+
     if (!entry) return null;
-    
+
+    // Vérifier l'expiration
     if (Date.now() - entry.timestamp > entry.ttl) {
       this.cache.delete(key);
-      this.removeFromAccessOrder(key);
       return null;
     }
-    
-    entry.hits++;
-    this.updateAccessOrder(key);
-    
+
     return entry.data;
   }
 
-  static getOrSet(key: string, factory: () => any, ttl?: number): any {
-    const cached = this.get(key);
-    if (cached !== null) return cached;
-    
-    const value = factory();
-    this.set(key, value, ttl);
-    return value;
-  }
-
+  /**
+   * Récupère plusieurs valeurs du cache
+   */
   static batchGet(keys: string[]): Map<string, any> {
     const results = new Map<string, any>();
     const now = Date.now();
-    
+
     for (const key of keys) {
       const entry = this.cache.get(key);
-      
-      if (entry && (now - entry.timestamp <= entry.ttl)) {
-        entry.hits++;
-        this.updateAccessOrder(key);
+
+      if (entry && now - entry.timestamp <= entry.ttl) {
         results.set(key, entry.data);
       } else if (entry) {
         this.cache.delete(key);
-        this.removeFromAccessOrder(key);
       }
     }
-    
+
     return results;
   }
 
-  static batchSet(entries: Array<{ key: string; data: any; ttl?: number }>): number {
-    let setCount = 0;
-    
-    for (const entry of entries) {
-      try {
-        this.set(entry.key, entry.data, entry.ttl);
-        setCount++;
-      } catch (error) {
-        console.error(`❌ Erreur batch set pour clé "${entry.key}":`, error);
-      }
-    }
-    
-    return setCount;
+  /**
+   * Vide le cache
+   */
+  static clear(): void {
+    this.cache.clear();
   }
 
-  static batchInvalidate(keys: string[]): number {
-    let invalidated = 0;
-    
-    for (const key of keys) {
-      if (this.cache.has(key)) {
-        this.cache.delete(key);
-        this.removeFromAccessOrder(key);
-        invalidated++;
-      }
-    }
-    
-    return invalidated;
-  }
-
+  /**
+   * Vérifie si une clé existe dans le cache
+   */
   static has(key: string): boolean {
     const entry = this.cache.get(key);
     if (!entry) return false;
-    
+
     if (Date.now() - entry.timestamp > entry.ttl) {
       this.cache.delete(key);
-      this.removeFromAccessOrder(key);
       return false;
     }
-    
+
     return true;
   }
-
-  static invalidate(key: string): void {
-    this.cache.delete(key);
-    this.removeFromAccessOrder(key);
-  }
-
-  static cleanup(): number {
-    const now = Date.now();
-    let cleaned = 0;
-    
-    for (const [key, entry] of this.cache.entries()) {
-      if (now - entry.timestamp > entry.ttl) {
-        this.cache.delete(key);
-        this.removeFromAccessOrder(key);
-        cleaned++;
-      }
-    }
-    
-    if (cleaned > 0) {
-      console.log(`🧹 ${cleaned} entrées de cache nettoyées`);
-    }
-    
-    return cleaned;
-  }
-
-  static invalidatePattern(pattern: string | RegExp): number {
-    let invalidated = 0;
-    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;
-    
-    for (const key of this.cache.keys()) {
-      if (regex.test(key)) {
-        this.cache.delete(key);
-        this.removeFromAccessOrder(key);
-        invalidated++;
-      }
-    }
-    
-    return invalidated;
-  }
-
-  static getStats(): CacheStats {
-    let totalHits = 0;
-    let oldestEntry = Date.now();
-    
-    for (const entry of this.cache.values()) {
-      totalHits += entry.hits;
-      if (entry.timestamp < oldestEntry) {
-        oldestEntry = entry.timestamp;
-      }
-    }
-    
-    return {
-      size: this.cache.size,
-      maxSize: this.MAX_SIZE,
-      totalHits,
-      avgHitsPerEntry: this.cache.size > 0 ? Math.round(totalHits / this.cache.size * 100) / 100 : 0,
-      oldestEntryAge: Date.now() - oldestEntry
-    };
-  }
-
-  static clear(): void {
-    this.cache.clear();
-    this.accessOrder = [];
-    console.log('🗑️ Cache vidé complètement');
-  }
-
-  private static updateAccessOrder(key: string): void {
-    this.removeFromAccessOrder(key);
-    this.accessOrder.push(key);
-  }
-
-  private static removeFromAccessOrder(key: string): void {
-    const index = this.accessOrder.indexOf(key);
-    if (index > -1) {
-      this.accessOrder.splice(index, 1);
-    }
-  }
-
-  static destroy(): void {
-    if (this.cleanupInterval !== null) {
-      clearInterval(this.cleanupInterval);
-      this.cleanupInterval = null;
-    }
-    this.clear();
-  }
-}
-
-/**
- * Utilitaires de prix avancés
- */
-export class PriceUtils {
-  static compareDetailed(price1: number, price2: number): PriceComparisonDetail {
-    const diff = PriceCalculator['round'](price2 - price1);
-    const absDiff = Math.abs(diff);
-    const percentage = price1 > 0 ? PriceCalculator['round']((absDiff / price1) * 100) : 0;
-    
-    return {
-      difference: diff,
-      absoluteDifference: absDiff,
-      percentage,
-      cheaper: diff > 0 ? 1 : diff < 0 ? 2 : null,
-      significantDifference: absDiff >= 0.25
-    };
-  }
-
-  static analyzePriceHistory(prices: number[]): PriceAnalysis {
-    if (prices.length === 0) {
-      return { min: 0, max: 0, avg: 0, volatility: 0, trend: 'stable' };
-    }
-
-    const validPrices = prices.filter(p => p > 0);
-    const min = Math.min(...validPrices);
-    const max = Math.max(...validPrices);
-    const avg = validPrices.reduce((a, b) => a + b, 0) / validPrices.length;
-    
-    const variance = validPrices.reduce((sum, p) => sum + Math.pow(p - avg, 2), 0) / validPrices.length;
-    const stdDev = Math.sqrt(variance);
-    const volatility = avg > 0 ? PriceCalculator['round']((stdDev / avg) * 100) : 0;
-    
-    const trend = validPrices.length > 1
-      ? validPrices[validPrices.length - 1] > validPrices[0] ? 'rising' : 
-        validPrices[validPrices.length - 1] < validPrices[0] ? 'falling' : 'stable'
-      : 'stable';
-
-    return {
-      min: PriceCalculator['round'](min),
-      max: PriceCalculator['round'](max),
-      avg: PriceCalculator['round'](avg),
-      volatility,
-      trend
-    };
-  }
-
-  static calculateUnitPrice(price: number, quantity: number, unit: string): string {
-    if (quantity <= 0) return "N/A";
-    const unitPrice = PriceCalculator['round'](price / quantity);
-    return `$${unitPrice.toFixed(2)}/${unit}`;
-  }
-
-  static comparePrices(price1: number, price2: number): {
-    difference: number;
-    percentage: number;
-    cheaper: 1 | 2 | null;
-  } {
-    if (price1 === price2) {
-      return { difference: 0, percentage: 0, cheaper: null };
-    }
-
-    const difference = Math.abs(price1 - price2);
-    const percentage = (difference / Math.max(price1, price2)) * 100;
-
-    return {
-      difference: PriceCalculator['round'](difference),
-      percentage: PriceCalculator['round'](percentage),
-      cheaper: price1 < price2 ? 1 : 2
-    };
-  }
-
-  static calculateAnnualSavings(weeklySavings: number): number {
-    return PriceCalculator['round'](weeklySavings * 52);
-  }
-
-  static roundToNearestCent(amount: number): number {
-    return Math.round(amount * 100) / 100;
-  }
-
-  static applyTax(amount: number, taxRate: number = 0.14975): number {
-    return this.roundToNearestCent(amount * (1 + taxRate));
-  }
-}
-
-// Types additionnels
-interface CacheEntry {
-  data: any;
-  timestamp: number;
-  ttl: number;
-  hits: number;
-}
-
-interface CacheStats {
-  size: number;
-  maxSize: number;
-  totalHits: number;
-  avgHitsPerEntry: number;
-  oldestEntryAge: number;
-}
-
-interface PriceComparisonDetail {
-  difference: number;
-  absoluteDifference: number;
-  percentage: number;
-  cheaper: 1 | 2 | null;
-  significantDifference: boolean;
-}
-
-interface PriceAnalysis {
-  min: number;
-  max: number;
-  avg: number;
-  volatility: number;
-  trend: 'rising' | 'falling' | 'stable';
-}
-
-// Initialiser le cache au chargement
-if (typeof window !== 'undefined') {
-  PriceCache.initialize();
 }
