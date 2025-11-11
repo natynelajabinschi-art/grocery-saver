@@ -209,95 +209,6 @@ export default function HomePage() {
           </div>
 
           {/* 
-            PANEL: Panier Interactif (conditionnel)
-            ---------------------------------------
-            S'affiche uniquement s'il y a des articles à comparer
-          */}
-          {comparedItems.length > 0 && (
-            <div className="card border-0 shadow-sm mb-4">
-              <div className="card-header bg-white d-flex justify-content-between align-items-center">
-                <h5 className="mb-0 fw-bold text-success">
-                  Votre panier <span className="badge ms-2 text-white bg-success">{comparedItems.length}</span>
-                </h5>
-                {/* Bouton pour vider le panier */}
-                <button 
-                  className="btn btn-sm btn-success text-white"
-                  onClick={clearAllItems}
-                >
-                  Tout effacer
-                </button>
-              </div>
-              <div className="card-body p-0">
-                {/* Liste des articles dans le panier */}
-                <div className="list-group list-group-flush">
-                  {comparedItems.map((item, index) => (
-                    <div key={index} className="list-group-item d-flex justify-content-between align-items-center">
-                      <div className="d-flex align-items-center">
-                        {/* Numéro de l'article */}
-                        <span className="badge rounded-circle me-3 d-flex align-items-center justify-content-center text-white bg-success" 
-                          style={{width: '25px', height: '25px', fontSize: '12px'}}>
-                          {index + 1}
-                        </span>
-                        {/* Nom de l'article */}
-                        <span className="text-capitalize fw-medium">{item}</span>
-                      </div>
-                      {/* Bouton de suppression d'un article */}
-                      <button 
-                        className="btn btn-sm btn-success text-white"
-                        onClick={() => removeItem(index)}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                {/* Pied de carte avec bouton d'action principal */}
-                <div className="card-footer bg-light text-center">
-                  <button 
-                    className="btn btn-success w-100 fw-bold py-2 text-white"
-                    onClick={() => alert(`Comparaison lancée pour: ${comparedItems.join(', ')}`)}
-                  >
-                    Lancer la comparaison
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 
-            PANEL: Astuces d'utilisation
-            -----------------------------
-          */}
-          <div className="card border-0 shadow-sm mb-4">
-            <div className="card-header bg-white">
-              <h5 className="mb-0 fw-bold text-success">Astuces</h5>
-            </div>
-            <div className="card-body">
-              {/* Astuce 1: Noms génériques */}
-              <div className="d-flex mb-3">
-                <span className="text-success me-2">•</span>
-                <small className="text-muted">
-                  Utilisez des noms génériques (ex: "lait" plutôt que "lait Natrel 2%")
-                </small>
-              </div>
-              {/* Astuce 2: Séparation par virgules */}
-              <div className="d-flex mb-3">
-                <span className="text-success me-2">•</span>
-                <small className="text-muted">
-                  Séparez les produits par des virgules
-                </small>
-              </div>
-              {/* Astuce 3: Comparaison multiple */}
-              <div className="d-flex">
-                <span className="text-success me-2">•</span>
-                <small className="text-muted">
-                  Comparez plusieurs produits à la fois
-                </small>
-              </div>
-            </div>
-          </div>
-
-          {/* 
             PANEL: Magasins supportés
             --------------------------
           */}
@@ -329,24 +240,6 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* 
-            PANEL: Call-to-Action (CTA)
-            ----------------------------
-            Encourager l'utilisateur à commencer
-          */}
-          <div className="card border-0 shadow-sm mt-4 text-center text-white bg-success">
-            <div className="card-body py-4">
-              <h5 className="fw-bold mb-3">Prêt à économiser ?</h5>
-              <p className="mb-3 small">
-                Commencez dès maintenant et découvrez combien vous pouvez économiser sur vos courses.
-              </p>
-              {/* Bouton d'action principal */}
-              <button className="btn btn-light fw-bold text-success">
-                Commencer Maintenant
-              </button>
             </div>
           </div>
         </div>

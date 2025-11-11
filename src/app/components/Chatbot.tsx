@@ -236,7 +236,7 @@ ${shoppingList.map(item => `☐ ${item}`).join('\n')}
         sender: 'bot',
         text: `📊 Comparaison Walmart, Metro et Super C
 
-${data.summary.bestStore} est le plus avantageux pour vos ${allItems.length} produits.
+${data.summary.bestStore} est le plus avantageux pour vos ${allItems.length} produit${allItems.length > 1 ? 's' : ''}.
 
 ${renderPriceComparison(data)}`,
         timestamp: new Date()
@@ -281,12 +281,25 @@ ${renderPriceComparison(data)}`,
   };
 
   const renderPriceComparison = (data: any) => {
-    return `🏪 Walmart : ${data.summary.totalWalmart?.toFixed(2) || '0.00'}$ (${data.summary.promotionsFoundWalmart || 0} promos)
-🏪 Metro : ${data.summary.totalMetro?.toFixed(2) || '0.00'}$ (${data.summary.promotionsFoundMetro || 0} promos)
-🏪 Super C : ${data.summary.totalSuperC?.toFixed(2) || '0.00'}$ (${data.summary.promotionsFoundSuperC || 0} promos)
-💰 Économie : ${data.summary.totalSavings?.toFixed(2) || '0.00'}$
-📦 Produits en promo : ${data.metadata?.productsWithPromotions || 0}/${data.summary.totalProducts || 0}`;
-  };
+  const { summary } = data;
+  const bestReason =
+    summary.totalSavings > 0
+      ? `💡 ${summary.bestStore} offre le plus de produits en promotion (${Math.max(
+          summary.promotionsFoundWalmart,
+          summary.promotionsFoundMetro,
+          summary.promotionsFoundSuperC
+        )}) et un meilleur panier global.`
+      : `💡 Aucun rabais significatif trouvé pour vos produits cette semaine.`;
+
+  return `🏪 Walmart : ${summary.totalWalmart.toFixed(2)}$ (${summary.promotionsFoundWalmart} promos)
+  🏪 Metro : ${summary.totalMetro.toFixed(2)}$ (${summary.promotionsFoundMetro} promos)
+  🏪 Super C : ${summary.totalSuperC.toFixed(2)}$ (${summary.promotionsFoundSuperC} promos)
+  💰 Économie totale : ${summary.totalSavings.toFixed(2)}$
+  📦 Produits en promo : ${summary.productsFound}/${summary.totalProducts}
+  ${bestReason}`;
+};
+
+
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {

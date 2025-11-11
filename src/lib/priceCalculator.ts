@@ -7,7 +7,6 @@
 // ========================================
 // TYPES ET INTERFACES
 // ========================================
-
 export interface PriceComparison {
   product: string;
   walmartPrice: number | null;
@@ -18,6 +17,7 @@ export interface PriceComparison {
   savings: number;
   savingsPercentage: number;
   confidence: number;
+  hasPromotion: boolean;
 }
 
 export interface StoreComparison {
@@ -27,6 +27,7 @@ export interface StoreComparison {
   savingsPercentage: number;
   productsFound: number;
   cheaperItems: number;
+  promotionsFound: number;
 }
 
 export interface ComparisonSummary {
@@ -41,23 +42,24 @@ export interface ComparisonSummary {
   productsFoundWalmart: number;
   productsFoundMetro: number;
   productsFoundSuperC: number;
+  promotionsFoundWalmart: number;
+  promotionsFoundMetro: number;
+  promotionsFoundSuperC: number;
 }
 
 // ========================================
 // CONFIGURATION
 // ========================================
-
 const CONFIG = {
   PRECISION: 100, // 2 décimales
   TAX_RATE: 0.14975, // TPS + TVQ Québec
   MIN_VALID_PRICE: 0.01,
-  MAX_VALID_PRICE: 1000
+  MAX_VALID_PRICE: 1000,
 };
 
 // ========================================
 // FONCTIONS UTILITAIRES
 // ========================================
-
 /**
  * Arrondit un nombre avec précision garantie
  */
@@ -81,20 +83,17 @@ function isValidPrice(price: number | null | undefined): price is number {
 // ========================================
 // CALCULS DE BASE
 // ========================================
-
 /**
  * Calcule le total d'une liste de prix
  */
 export function calculateTotal(prices: (number | null)[]): number {
   if (!prices || prices.length === 0) return 0;
-
   const sum = prices.reduce((acc, price) => {
     if (isValidPrice(price)) {
       return acc + price;
     }
     return acc;
   }, 0);
-
   return round(sum);
 }
 
@@ -104,10 +103,8 @@ export function calculateTotal(prices: (number | null)[]): number {
 export function calculateSavings(...prices: (number | null)[]): number {
   const validPrices = prices.filter(isValidPrice);
   if (validPrices.length < 2) return 0;
-
   const min = Math.min(...validPrices);
   const max = Math.max(...validPrices);
-
   return round(max - min);
 }
 
@@ -120,9 +117,8 @@ export function calculateSavingsPercentage(savings: number, basePrice: number): 
 }
 
 // ========================================
-// DÉTERMIN ATION DU MEILLEUR MAGASIN
+// DÉTERMINATION DU MEILLEUR MAGASIN
 // ========================================
-
 /**
  * Détermine le magasin avec le meilleur prix total
  */
@@ -131,35 +127,33 @@ export function determineBestStore(
   metroTotal: number,
   supercTotal: number
 ): "Walmart" | "Metro" | "Super C" | "Égalité" {
-  // Arrondir les totaux
+  const tolerance = 0.01; // Tolérance stricte pour les prix égaux
   const walmart = round(walmartTotal);
   const metro = round(metroTotal);
   const superc = round(supercTotal);
 
-  // Trouver le minimum
-  const minTotal = Math.min(walmart, metro, superc);
-
-  // Vérifier l'égalité (tolérance de 0.01$)
-  const tolerance = 0.01;
-  const isEqual =
+  // Vérifie si les totaux sont égaux (à la tolérance près)
+  const allTotalsEqual =
     Math.abs(walmart - metro) < tolerance &&
     Math.abs(walmart - superc) < tolerance &&
     Math.abs(metro - superc) < tolerance;
 
-  if (isEqual) return "Égalité";
+  if (allTotalsEqual) {
+    return "Égalité"; // Retourne "Égalité" si les totaux sont égaux
+  }
 
-  // Retourner le magasin avec le prix minimum
+  // Sinon, retourne le magasin avec le total minimal
+  const minTotal = Math.min(walmart, metro, superc);
   if (Math.abs(walmart - minTotal) < tolerance) return "Walmart";
   if (Math.abs(metro - minTotal) < tolerance) return "Metro";
   if (Math.abs(superc - minTotal) < tolerance) return "Super C";
 
-  return "Walmart"; // Fallback
+  return "Égalité"; // Fallback
 }
 
 // ========================================
 // COMPARAISON DÉTAILLÉE
 // ========================================
-
 /**
  * Compare les prix de plusieurs produits entre les 3 magasins
  */
@@ -169,6 +163,9 @@ export function compareProducts(
     walmartPrice: number | null;
     metroPrice: number | null;
     supercPrice: number | null;
+    walmartOldPrice?: number | null; // Prix régulier pour détecter les promos
+    metroOldPrice?: number | null;
+    supercOldPrice?: number | null;
   }>
 ): {
   comparisons: PriceComparison[];
@@ -185,16 +182,42 @@ export function compareProducts(
   let productsFoundWalmart = 0;
   let productsFoundMetro = 0;
   let productsFoundSuperC = 0;
-
+  let promotionsFoundWalmart = 0;
+  let promotionsFoundMetro = 0;
+  let promotionsFoundSuperC = 0;
   const storeCheaperCount = {
     Walmart: 0,
     Metro: 0,
-    "Super C": 0
+    "Super C": 0,
   };
 
   // Traiter chaque produit
   for (const product of products) {
-    const { name, walmartPrice, metroPrice, supercPrice } = product;
+    const {
+      name,
+      walmartPrice,
+      metroPrice,
+      supercPrice,
+      walmartOldPrice,
+      metroOldPrice,
+      supercOldPrice,
+    } = product;
+
+    // Compter les produits trouvés par magasin
+    if (isValidPrice(walmartPrice)) productsFoundWalmart++;
+    if (isValidPrice(metroPrice)) productsFoundMetro++;
+    if (isValidPrice(supercPrice)) productsFoundSuperC++;
+
+    // Compter les promos (si oldPrice existe et est > newPrice)
+    if (isValidPrice(walmartOldPrice) && isValidPrice(walmartPrice) && walmartOldPrice > walmartPrice) {
+      promotionsFoundWalmart++;
+    }
+    if (isValidPrice(metroOldPrice) && isValidPrice(metroPrice) && metroOldPrice > metroPrice) {
+      promotionsFoundMetro++;
+    }
+    if (isValidPrice(supercOldPrice) && isValidPrice(supercPrice) && supercOldPrice > supercPrice) {
+      promotionsFoundSuperC++;
+    }
 
     // Calculer les économies
     const savings = calculateSavings(walmartPrice, metroPrice, supercPrice);
@@ -203,46 +226,44 @@ export function compareProducts(
     const validPrices = [
       { store: "Walmart" as const, price: walmartPrice },
       { store: "Metro" as const, price: metroPrice },
-      { store: "Super C" as const, price: supercPrice }
-    ].filter(p => isValidPrice(p.price)) as Array<{
+      { store: "Super C" as const, price: supercPrice },
+    ].filter((p) => isValidPrice(p.price)) as Array<{
       store: "Walmart" | "Metro" | "Super C";
       price: number;
     }>;
 
     let bestStore: "Walmart" | "Metro" | "Super C" | null = null;
     let bestPrice: number | null = null;
+    let hasPromotion = false;
 
     if (validPrices.length > 0) {
       validPrices.sort((a, b) => a.price - b.price);
       bestStore = validPrices[0].store;
       bestPrice = validPrices[0].price;
+      hasPromotion =
+        (bestStore === "Walmart" && walmartOldPrice && walmartOldPrice > walmartPrice) ||
+        (bestStore === "Metro" && metroOldPrice && metroOldPrice > metroPrice) ||
+        (bestStore === "Super C" && supercOldPrice && supercOldPrice > supercPrice);
 
       if (savings > 0) {
         storeCheaperCount[bestStore]++;
       }
-
-      productsFound++;
     }
+
+    // Un produit est trouvé s'il a au moins un prix valide
+    const isFound = isValidPrice(walmartPrice) || isValidPrice(metroPrice) || isValidPrice(supercPrice);
+    if (isFound) productsFound++;
 
     // Accumuler les totaux
-    if (isValidPrice(walmartPrice)) {
-      walmartTotal += walmartPrice;
-      productsFoundWalmart++;
-    }
-    if (isValidPrice(metroPrice)) {
-      metroTotal += metroPrice;
-      productsFoundMetro++;
-    }
-    if (isValidPrice(supercPrice)) {
-      supercTotal += supercPrice;
-      productsFoundSuperC++;
-    }
+    if (isValidPrice(walmartPrice)) walmartTotal += walmartPrice;
+    if (isValidPrice(metroPrice)) metroTotal += metroPrice;
+    if (isValidPrice(supercPrice)) supercTotal += supercPrice;
 
     // Calculer le pourcentage d'économie
-    const maxPrice = validPrices.length > 0 ? Math.max(...validPrices.map(p => p.price)) : 0;
+    const maxPrice = validPrices.length > 0 ? Math.max(...validPrices.map((p) => p.price)) : 0;
     const savingsPercentage = calculateSavingsPercentage(savings, maxPrice);
 
-    // Calculer la confiance (pourcentage de magasins ayant le produit)
+    // Calculer la confiance
     const storesWithProduct = [walmartPrice, metroPrice, supercPrice].filter(isValidPrice).length;
     const confidence = Math.round((storesWithProduct / 3) * 100);
 
@@ -255,12 +276,14 @@ export function compareProducts(
       bestStore,
       savings,
       savingsPercentage,
-      confidence
+      confidence,
+      hasPromotion,
     });
 
     // Log du résultat
     if (bestStore) {
-      console.log(`   ✅ "${name}": ${bestStore} - $${bestPrice?.toFixed(2)}`);
+      const promoLog = hasPromotion ? " (PROMO)" : "";
+      console.log(`   ✅ "${name}": ${bestStore} - $${bestPrice?.toFixed(2)}${promoLog}`);
     } else {
       console.log(`   ❌ "${name}": Non trouvé`);
     }
@@ -268,7 +291,8 @@ export function compareProducts(
 
   // Calculer le résumé
   const bestStore = determineBestStore(walmartTotal, metroTotal, supercTotal);
-  const totals = [walmartTotal, metroTotal, supercTotal].filter(t => t > 0);
+
+  const totals = [walmartTotal, metroTotal, supercTotal].filter((t) => t > 0);
   const totalSavings = totals.length > 0 ? Math.max(...totals) - Math.min(...totals) : 0;
   const savingsPercentage = totals.length > 0 ? calculateSavingsPercentage(totalSavings, Math.max(...totals)) : 0;
 
@@ -283,26 +307,25 @@ export function compareProducts(
     totalProducts: products.length,
     productsFoundWalmart,
     productsFoundMetro,
-    productsFoundSuperC
+    productsFoundSuperC,
+    promotionsFoundWalmart,
+    promotionsFoundMetro,
+    promotionsFoundSuperC,
   };
 
   console.log(`\n📊 === RÉSUMÉ ===`);
-  console.log(`   🏪 Walmart: $${summary.totalWalmart.toFixed(2)} (${productsFoundWalmart} produits)`);
-  console.log(`   🏪 Metro: $${summary.totalMetro.toFixed(2)} (${productsFoundMetro} produits)`);
-  console.log(`   🏪 Super C: $${summary.totalSuperC.toFixed(2)} (${productsFoundSuperC} produits)`);
+  console.log(`   🏪 Walmart: $${summary.totalWalmart.toFixed(2)} (${productsFoundWalmart} produits, ${promotionsFoundWalmart} promos)`);
+  console.log(`   🏪 Metro: $${summary.totalMetro.toFixed(2)} (${productsFoundMetro} produits, ${promotionsFoundMetro} promos)`);
+  console.log(`   🏪 Super C: $${summary.totalSuperC.toFixed(2)} (${productsFoundSuperC} produits, ${promotionsFoundSuperC} promos)`);
   console.log(`   🏆 Meilleur: ${bestStore}`);
   console.log(`   💰 Économie: $${summary.totalSavings.toFixed(2)} (${savingsPercentage.toFixed(1)}%)`);
 
-  return {
-    comparisons,
-    summary
-  };
+  return { comparisons, summary };
 }
 
 // ========================================
-// FORMATAGE
+// FORMATAGE ET UTILITAIRES
 // ========================================
-
 /**
  * Formate un prix avec ou sans le symbole $
  */
@@ -331,85 +354,54 @@ export function calculateAnnualSavings(weeklySavings: number, weeks: number = 52
 // ========================================
 // CACHE (OPTIONNEL)
 // ========================================
-
 export class PriceCache {
   private static cache = new Map<string, any>();
   private static readonly MAX_SIZE = 1000;
   private static readonly DEFAULT_TTL = 1800000; // 30 minutes
 
-  /**
-   * Stocke une valeur dans le cache
-   */
   static set(key: string, data: any, ttl: number = this.DEFAULT_TTL): void {
-    // Limiter la taille du cache
     if (this.cache.size >= this.MAX_SIZE) {
       const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
+      if (firstKey) this.cache.delete(firstKey);
     }
-
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now(),
-      ttl
-    });
+    this.cache.set(key, { data, timestamp: Date.now(), ttl });
   }
 
-  /**
-   * Récupère une valeur du cache
-   */
   static get(key: string): any | null {
     const entry = this.cache.get(key);
-
     if (!entry) return null;
-
-    // Vérifier l'expiration
     if (Date.now() - entry.timestamp > entry.ttl) {
       this.cache.delete(key);
       return null;
     }
-
     return entry.data;
   }
 
-  /**
-   * Récupère plusieurs valeurs du cache
-   */
   static batchGet(keys: string[]): Map<string, any> {
     const results = new Map<string, any>();
     const now = Date.now();
-
     for (const key of keys) {
       const entry = this.cache.get(key);
-
       if (entry && now - entry.timestamp <= entry.ttl) {
         results.set(key, entry.data);
       } else if (entry) {
         this.cache.delete(key);
       }
     }
-
     return results;
   }
 
-  /**
-   * Vide le cache
-   */
   static clear(): void {
     this.cache.clear();
   }
 
-  /**
-   * Vérifie si une clé existe dans le cache
-   */
   static has(key: string): boolean {
     const entry = this.cache.get(key);
     if (!entry) return false;
-
     if (Date.now() - entry.timestamp > entry.ttl) {
       this.cache.delete(key);
       return false;
     }
-
     return true;
   }
 }

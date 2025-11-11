@@ -246,57 +246,42 @@ DÉTAIL DES PRODUITS:`;
   /**
    * Génère une analyse simple sans IA
    */
-  private static generateSimpleAnalysis(comparisonData: any): string {
-    const { summary } = comparisonData;
+private static generateSimpleAnalysis(comparisonData: any): string {
+  const { summary } = comparisonData;
+  const totalPromos = summary.promotionsFoundWalmart + summary.promotionsFoundMetro + summary.promotionsFoundSuperC;
 
-    // Cas 1: Aucun produit trouvé
-    if (!summary || summary.productsFound === 0) {
-      return `🔍 **Aucun produit trouvé dans les circulaires actuelles**
-
-💡 **Suggestions:**
-• Utilisez des termes plus simples (ex: "lait" au lieu de "lait 2%")
-• Vérifiez l'orthographe des produits
-• Les promotions changent chaque semaine
-• Essayez des synonymes (ex: "fromage" pour "cheddar")`;
-    }
-
-    // Cas 2: Prix égaux
-    if (summary.bestStore === "Égalité") {
-      return `⚖️ **Prix similaires dans tous les magasins**
-
-📊 **Totaux:**
-• Walmart: $${summary.totalWalmart.toFixed(2)} (${summary.productsFoundWalmart} produits)
-• Metro: $${summary.totalMetro.toFixed(2)} (${summary.productsFoundMetro} produits)
-• Super C: $${summary.totalSuperC.toFixed(2)} (${summary.productsFoundSuperC} produits)
-• Produits trouvés: ${summary.productsFound}/${summary.totalProducts}
-
-💡 **Conseil:** Choisissez selon votre proximité ou préférence personnelle.`;
-    }
-
-    // Cas 3: Analyse standard
-    const savingsText =
-      summary.totalSavings > 0
-        ? `• Économie: $${summary.totalSavings.toFixed(2)} (${summary.savingsPercentage.toFixed(1)}%)`
-        : '• Différence minime';
-
-    const bestTotal =
-      summary.bestStore === "Walmart"
-        ? summary.totalWalmart
-        : summary.bestStore === "Metro"
-        ? summary.totalMetro
-        : summary.totalSuperC;
-
-    return `🛒 **Meilleur choix: ${summary.bestStore}**
-
-${savingsText}
-• Total: $${bestTotal.toFixed(2)}
-
-📊 **Comparaison:**
-• Walmart: $${summary.totalWalmart.toFixed(2)} (${summary.productsFoundWalmart} produits)
-• Metro: $${summary.totalMetro.toFixed(2)} (${summary.productsFoundMetro} produits)
-• Super C: $${summary.totalSuperC.toFixed(2)} (${summary.productsFoundSuperC} produits)
-• Produits trouvés: ${summary.productsFound}/${summary.totalProducts}
-
-💡 **Conseil:** ${summary.bestStore} offre le meilleur prix pour votre panier actuel.`;
+  // Cas 1: Aucun produit trouvé
+  if (!summary || summary.productsFound === 0) {
+    return `🔍 **Aucun produit trouvé dans les circulaires actuelles** ...`;
   }
+
+  // Cas 2: Prix égaux
+  if (summary.bestStore === "Égalité") {
+    return `⚖️ **Prix identiques dans tous les magasins**
+📊 **Totaux:**
+• Walmart: $${summary.totalWalmart.toFixed(2)} (${summary.promotionsFoundWalmart} promo${summary.promotionsFoundWalmart > 1 ? 's' : ''})
+• Metro: $${summary.totalMetro.toFixed(2)} (${summary.promotionsFoundMetro} promo${summary.promotionsFoundMetro > 1 ? 's' : ''})
+• Super C: $${summary.totalSuperC.toFixed(2)} (${summary.promotionsFoundSuperC} promo${summary.promotionsFoundSuperC > 1 ? 's' : ''})
+• Produits trouvés: ${summary.productsFound}/${summary.totalProducts || 0}
+• Promos trouvées: ${totalPromos}/${summary.totalProducts || 0}
+💡 **Conseil:** Choisissez selon votre proximité ou préférence personnelle.`;
+  }
+
+  // Cas 3: Analyse standard
+  const savingsText = summary.totalSavings > 0
+    ? `• Économie: $${summary.totalSavings.toFixed(2)} (${summary.savingsPercentage.toFixed(1)}%)`
+    : '• Différence minime';
+
+  return `🛒 **Meilleur choix: ${summary.bestStore}**
+${savingsText}
+• Total: $${summary[`total${summary.bestStore}`].toFixed(2)}
+📊 **Comparaison:**
+• Walmart: $${summary.totalWalmart.toFixed(2)} (${summary.promotionsFoundWalmart} promo${summary.promotionsFoundWalmart > 1 ? 's' : ''})
+• Metro: $${summary.totalMetro.toFixed(2)} (${summary.promotionsFoundMetro} promo${summary.promotionsFoundMetro > 1 ? 's' : ''})
+• Super C: $${summary.totalSuperC.toFixed(2)} (${summary.promotionsFoundSuperC} promo${summary.promotionsFoundSuperC > 1 ? 's' : ''})
+• Produits trouvés: ${summary.productsFound}/${summary.totalProducts || 0}
+• Promos trouvées: ${totalPromos}/${summary.totalProducts || 0}
+💡 **Conseil:** ${summary.bestStore} offre le meilleur prix pour votre panier actuel.`;
+}
+
 }
