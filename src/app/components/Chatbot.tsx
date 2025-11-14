@@ -1,13 +1,15 @@
-// components/Chatbot.tsx
+// components/Chatbot.tsx - VERSION COMPLÈTE OPTIMISÉE
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2, CheckCircle, X, Mic, MicOff, Download, Trash2 } from 'lucide-react';
+import { Send, Bot, User, Loader2, CheckCircle, X, Mic, MicOff, Download, Trash2, Award, TrendingDown } from 'lucide-react';
 
 interface Message {
   sender: 'user' | 'bot';
   text: string;
   timestamp: Date;
+  isResult?: boolean;
+  data?: any;
 }
 
 interface ChatbotProps {
@@ -26,13 +28,16 @@ Je vous aide à comparer les prix entre Walmart, Metro et Super C.
 • Listez vos produits (ex: "lait, œufs, pain")
 • Je trouve les meilleures PROMOTIONS automatiquement
 • Obtenez des conseils personnalisés pour économiser
+• Chaque recherche est indépendante (nouvelle liste à chaque fois)
 
 💡 Exemples :
 "Je veux faire un gâteau au chocolat"
 "Comparer les prix des fruits et légumes"
 "Quelles sont les promotions cette semaine ?"
 
-📍 Magasins comparés : Walmart, Metro et Super C`,
+✨ Astuce : Vous pouvez ajouter des produits progressivement avant de lancer la comparaison
+
+🏪 Magasins comparés : Walmart, Metro et Super C`,
       timestamp: new Date()
     }
   ]);
@@ -95,34 +100,6 @@ Je vous aide à comparer les prix entre Walmart, Metro et Super C.
       const updated = [...prev, ...newItems.filter(item => !prev.includes(item))];
       return updated;
     });
-  };
-
-  const removeFromShoppingList = (index: number) => {
-    setShoppingList(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const clearShoppingList = () => {
-    setShoppingList([]);
-  };
-
-  const exportShoppingList = () => {
-    const content = `🛒 Liste de courses SmartShopper
-Comparaison : Walmart, Metro, Super C
-
-${shoppingList.map(item => `☐ ${item}`).join('\n')}
-
-📅 Générée le ${new Date().toLocaleDateString('fr-FR')}
-🏪 Vérifiez les promotions chez Walmart, Metro et Super C`;
-    
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `liste-courses-${new Date().toISOString().split('T')[0]}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   };
 
   const startListening = () => {
@@ -231,15 +208,13 @@ ${shoppingList.map(item => `☐ ${item}`).join('\n')}
         return;
       }
 
-      // Afficher les résultats avec composant structuré
+      // Message de résultats avec nouvelle logique
       const resultsMessage: Message = {
         sender: 'bot',
-        text: `📊 Comparaison Walmart, Metro et Super C
-
-${data.summary.bestStore} est le plus avantageux pour vos ${allItems.length} produit${allItems.length > 1 ? 's' : ''}.
-
-${renderPriceComparison(data)}`,
-        timestamp: new Date()
+        text: renderOptimizedComparison(data),
+        timestamp: new Date(),
+        isResult: true,
+        data: data.summary
       };
 
       // Message d'analyse IA
@@ -250,6 +225,9 @@ ${renderPriceComparison(data)}`,
       };
 
       setMessages(prev => [...prev, resultsMessage, analysisMessage]);
+
+      // IMPORTANT: Réinitialiser la liste des produits après comparaison
+      setItems([]);
 
       // Callback optionnel
       if (onCompare) {
@@ -280,26 +258,66 @@ ${renderPriceComparison(data)}`,
     }
   };
 
-  const renderPriceComparison = (data: any) => {
-  const { summary } = data;
-  const bestReason =
-    summary.totalSavings > 0
-      ? `💡 ${summary.bestStore} offre le plus de produits en promotion (${Math.max(
-          summary.promotionsFoundWalmart,
-          summary.promotionsFoundMetro,
-          summary.promotionsFoundSuperC
-        )}) et un meilleur panier global.`
-      : `💡 Aucun rabais significatif trouvé pour vos produits cette semaine.`;
+  // NOUVELLE FONCTION: Rendu optimisé de la comparaison
+  const renderOptimizedComparison = (data: any) => {
+    const { summary, comparisons } = data;
+    
+    let result = `📊 **Comparaison Walmart, Metro et Super C**\n\n`;
 
-  return `🏪 Walmart : ${summary.totalWalmart.toFixed(2)}$ (${summary.promotionsFoundWalmart} promos)
-  🏪 Metro : ${summary.totalMetro.toFixed(2)}$ (${summary.promotionsFoundMetro} promos)
-  🏪 Super C : ${summary.totalSuperC.toFixed(2)}$ (${summary.promotionsFoundSuperC} promos)
-  💰 Économie totale : ${summary.totalSavings.toFixed(2)}$
-  📦 Produits en promo : ${summary.productsFound}/${summary.totalProducts}
-  ${bestReason}`;
-};
+    // Afficher le meilleur choix avec badge
+    if (summary.bestStore === "Égalité") {
+      result += `⚖️ **PRIX IDENTIQUES**\n`;
+      result += `${summary.bestStoreReason}\n\n`;
+    } else {
+      result += `🏆 **MEILLEUR CHOIX : ${summary.bestStore}**\n`;
+      result += `📊 ${summary.bestStoreReason}\n\n`;
+    }
+
+    // Tableau comparatif
+    result += `**Prix totaux :**\n`;
+    result += `🏪 Walmart : ${summary.totalWalmart.toFixed(2)}$ (${summary.promotionsFoundWalmart} promo${summary.promotionsFoundWalmart > 1 ? 's' : ''})\n`;
+    result += `🏪 Metro : ${summary.totalMetro.toFixed(2)}$ (${summary.promotionsFoundMetro} promo${summary.promotionsFoundMetro > 1 ? 's' : ''})\n`;
+    result += `🏪 Super C : ${summary.totalSuperC.toFixed(2)}$ (${summary.promotionsFoundSuperC} promo${summary.promotionsFoundSuperC > 1 ? 's' : ''})\n\n`;
 
 
+    result += `📦 Produits trouvés : ${summary.productsFound}/${summary.totalProducts}\n`;
+
+    // Économies vs prix réguliers
+    if (summary.totalPromotionalSavings > 0) {
+      result += `🎉 Économie totale vs prix régulier : ${summary.totalPromotionalSavings.toFixed(2)}$\n\n`;
+    }
+
+    // NOUVEAU: Afficher les produits en promotion avec détails
+    const productsWithPromos = comparisons.filter((c: any) => c.hasPromotion);
+    if (productsWithPromos.length > 0) {
+      result += `**🎁 Produits en promotion :**\n\n`;
+      
+      productsWithPromos.slice(0, 8).forEach((product: any, idx: number) => {
+        result += `${idx + 1}. **${product.originalProduct}**\n`;
+        
+        if (product.walmart.hasPromotion) {
+          result += `   🏪 Walmart: ${product.walmart.productName}\n`;
+          result += `      ${product.walmart.price?.toFixed(2)}$ (rég. ${product.walmart.regularPrice?.toFixed(2)}$) • -${product.walmart.discount}%\n`;
+        }
+        if (product.metro.hasPromotion) {
+          result += `   🏪 Metro: ${product.metro.productName}\n`;
+          result += `      ${product.metro.price?.toFixed(2)}$ (rég. ${product.metro.regularPrice?.toFixed(2)}$) • -${product.metro.discount}%\n`;
+        }
+        if (product.superc.hasPromotion) {
+          result += `   🏪 Super C: ${product.superc.productName}\n`;
+          result += `      ${product.superc.price?.toFixed(2)}$ (rég. ${product.superc.regularPrice?.toFixed(2)}$) • -${product.superc.discount}%\n`;
+        }
+        
+        result += `\n`;
+      });
+
+      if (productsWithPromos.length > 8) {
+        result += `... et ${productsWithPromos.length - 8} autre${productsWithPromos.length - 8 > 1 ? 's' : ''} produit${productsWithPromos.length - 8 > 1 ? 's' : ''} en promotion\n\n`;
+      }
+    }
+
+    return result;
+  };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -339,18 +357,24 @@ ${renderPriceComparison(data)}`,
               className={`rounded-3 p-3 shadow-sm ${
                 msg.sender === 'user'
                   ? 'bg-primary text-white'
+                  : msg.isResult
+                  ? 'bg-success bg-opacity-10 border border-success'
                   : 'bg-white text-dark border'
               }`}
               style={{ maxWidth: '85%' }}
             >
               <div className="d-flex align-items-center mb-2">
                 {msg.sender === 'bot' ? (
-                  <Bot size={16} className="me-2 text-success" />
+                  msg.isResult ? (
+                    <Award size={16} className="me-2 text-success" />
+                  ) : (
+                    <Bot size={16} className="me-2 text-success" />
+                  )
                 ) : (
                   <User size={16} className="me-2 text-white" />
                 )}
                 <small className="fw-bold">
-                  {msg.sender === 'bot' ? 'SmartShopper' : 'Vous'}
+                  {msg.sender === 'bot' ? (msg.isResult ? 'Résultats' : 'SmartShopper') : 'Vous'}
                 </small>
                 <small className="ms-auto opacity-75" style={{ fontSize: '0.7rem' }}>
                   {msg.timestamp.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
@@ -359,6 +383,14 @@ ${renderPriceComparison(data)}`,
               <div style={{ whiteSpace: 'pre-line', fontSize: '0.95rem', lineHeight: '1.4' }}>
                 {msg.text}
               </div>
+              {msg.isResult && msg.data && msg.data.bestStore !== "Égalité" && (
+                <div className="mt-2 pt-2 border-top">
+                  <small className="d-flex align-items-center text-success fw-bold">
+                    <TrendingDown size={14} className="me-1" />
+                    Économisez ${msg.data.totalSavings.toFixed(2)} chez {msg.data.bestStore}
+                  </small>
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -383,7 +415,16 @@ ${renderPriceComparison(data)}`,
       {/* Liste des produits ajoutés */}
       {items.length > 0 && (
         <div className="px-3 py-2 bg-light border-top">
-          <small className="text-muted d-block mb-2">📦 Produits à comparer:</small>
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <small className="text-muted d-block">📦 Produits à comparer:</small>
+            <button
+              onClick={() => setItems([])}
+              className="btn btn-sm btn-outline-danger"
+              title="Vider la liste"
+            >
+              <X size={12} />
+            </button>
+          </div>
           <div className="d-flex flex-wrap gap-2">
             {items.map((item, i) => (
               <span
@@ -396,48 +437,6 @@ ${renderPriceComparison(data)}`,
                 <button
                   onClick={() => removeItem(i)}
                   className="btn-close btn-close-white"
-                  style={{ fontSize: '0.6rem', marginLeft: '4px' }}
-                  aria-label="Retirer"
-                />
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Liste de courses persistante */}
-      {shoppingList.length > 0 && (
-        <div className="px-3 py-2 bg-warning bg-opacity-10 border-top">
-          <div className="d-flex justify-content-between align-items-center mb-2">
-            <small className="text-muted fw-bold">🛒 Liste de courses:</small>
-            <div>
-              <button
-                className="btn btn-sm btn-outline-success me-1"
-                onClick={exportShoppingList}
-                title="Télécharger la liste"
-              >
-                <Download size={14} />
-              </button>
-              <button
-                className="btn btn-sm btn-outline-danger"
-                onClick={clearShoppingList}
-                title="Vider la liste"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          </div>
-          <div className="d-flex flex-wrap gap-2">
-            {shoppingList.map((item, i) => (
-              <span
-                key={i}
-                className="badge bg-warning text-dark d-flex align-items-center gap-1"
-                style={{ fontSize: '0.85rem' }}
-              >
-                ☐ {item}
-                <button
-                  onClick={() => removeFromShoppingList(i)}
-                  className="btn-close"
                   style={{ fontSize: '0.6rem', marginLeft: '4px' }}
                   aria-label="Retirer"
                 />
