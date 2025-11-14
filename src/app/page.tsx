@@ -33,51 +33,13 @@ export default function HomePage() {
       */}
       <div className="row mb-5">
         <div className="col-12">
-          {/* Carte hero compacte avec dégradé vert */}
-          <div className="card text-white border-0 shadow-lg" style={{
-            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-          }}>
+          <div className="card  border-0" >
             <div className="card-body py-4 text-center">
-              {/* Logo et nom de l'application */}
-              <div className="d-flex align-items-center justify-content-center mb-3">
-                {/* Logo */}
-                <div className="bg-white rounded-circle d-flex align-items-center justify-content-center me-3" 
-                     style={{width: '60px', height: '60px'}}>
-                  <span className="fs-3 fw-bold text-success">🛒</span>
-                </div>
-                <div className="text-start">
-                  <h1 className="fw-bold mb-0" style={{fontSize: '2.5rem'}}>SmartShopper</h1>
-                  <p className="text-light mb-0" style={{color: '#d1d5db'}}>Économisez intelligemment</p>
-                </div>
-              </div>
 
-              {/* Message d'économies avec cercle */}
-              <div className="d-flex align-items-center justify-content-center mb-3">
-                <div className="bg-warning rounded-circle d-flex align-items-center justify-content-center me-3" 
-                     style={{width: '40px', height: '40px', minWidth: '40px'}}>
-                  <span className="text-dark fw-bold">💰</span>
-                </div>
-                <h2 className="fw-bold fs-3 mb-0">Économisez jusqu'à 30% sur vos courses</h2>
-              </div>
-              
               {/* Titre principal avec partie en jaune */}
-              <h1 className="display-5 fw-bold mb-3">
-                Comparez les Prix{' '}
-                <span style={{
-                  color: '#FFD700',
-                  textShadow: '0 0 10px rgba(255, 215, 0, 0.5)',
-                  background: 'linear-gradient(45deg, #FFD700, #FFA500)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
-                }}>
-                  Économisez Plus
-                </span>
+              <h1 className="mb-3">
+                Magasinez plus intelligemment avec Flipp et économisez jusqu’à 20 % chaque semaine sur vos courses.
               </h1>
-              
-              {/* Sous-titre compact */}
-              <p className="lead mb-0 fs-5">
-                Analysez automatiquement les circulaires de vos magasins préférés et trouvez les meilleures offres avec l'aide de l'intelligence artificielle
-              </p>
             </div>
           </div>
         </div>
