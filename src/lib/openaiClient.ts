@@ -1,4 +1,4 @@
-// lib/aiPriceService.ts - VERSION CORRIGÉE
+// lib/openaiClient.ts - VERSION AVEC SUPER C
 
 import OpenAI from 'openai';
 
@@ -9,7 +9,6 @@ const openai = new OpenAI({
 export class AIPriceService {
   static async generateSmartAnalysis(dbData: any, userProducts: string[]): Promise<string> {
     try {
-      // Ne pas utiliser l'IA pour des cas trop simples
       if (!this.shouldUseAI(dbData)) {
         return this.generateSimpleAnalysis(dbData);
       }
@@ -26,7 +25,8 @@ export class AIPriceService {
             - Donne des conseils spécifiques pour économiser
             - Structure: Résumé → Analyse → Recommandation
             - Utilise des émojis pour rendre ça vivant
-            - Mentionne les produits manquants si nécessaire`
+            - Mentionne les produits manquants si nécessaire
+            - Compare IGA, Metro ET Super C`
           },
           {
             role: "user",
@@ -56,24 +56,24 @@ export class AIPriceService {
     
     if (!summary) return false;
     
-    // Utiliser l'IA seulement pour des cas intéressants
     return (
-      summary.productsFound >= 2 && // Au moins 2 produits trouvés
-      summary.totalProducts >= 2 && // Liste significative
-      (Math.abs(summary.priceDifference) >= 0.5 || // Différence notable
-       summary.productsFound < summary.totalProducts) // Produits manquants
+      summary.productsFound >= 2 &&
+      summary.totalProducts >= 2 &&
+      (Math.abs(summary.priceDifference) >= 0.5 ||
+       summary.productsFound < summary.totalProducts)
     );
   }
 
   private static createAnalysisPrompt(dbData: any, userProducts: string[]): string {
     const { summary, detailedComparison } = dbData;
 
-    return `Analyse ces données de shopping pour aider un utilisateur à choisir entre IGA et Metro:
+    return `Analyse ces données de shopping pour aider un utilisateur à choisir entre IGA, Metro ET Super C:
 
 CONTEXTE:
 - Produits recherchés: ${userProducts.join(', ')}
 - Total IGA: $${(summary.totalIga || 0).toFixed(2)}
 - Total Metro: $${(summary.totalMetro || 0).toFixed(2)}
+- Total Super C: $${(summary.totalSuperC || 0).toFixed(2)}
 - Économie potentielle: $${(summary.totalSavings || 0).toFixed(2)}
 - Situation: ${this.getSituationContext(dbData)}
 
@@ -96,7 +96,7 @@ Sois direct et utile, pas trop formel.`;
     if (summary.productsFound < summary.totalProducts) return `${summary.totalProducts - summary.productsFound} produit(s) manquant(s)`;
     if (Math.abs(summary.priceDifference || 0) < 0.5) return "Prix très similaires";
     if ((summary.totalSavings || 0) > 5) return "Économies importantes possibles";
-    if (summary.bestStore === "Égalité") return "Prix identiques dans les deux magasins";
+    if (summary.bestStore === "Égalité") return "Prix identiques dans tous les magasins";
     
     return "Comparaison standard avec économies";
   }
@@ -107,26 +107,26 @@ Sois direct et utile, pas trop formel.`;
     let data = `TOTAUX COMPARÉS:
 • IGA: $${(summary.totalIga || 0).toFixed(2)} (${summary.productsFoundIga || 0}/${summary.totalProducts} produits)
 • Metro: $${(summary.totalMetro || 0).toFixed(2)} (${summary.productsFoundMetro || 0}/${summary.totalProducts} produits)
+• Super C: $${(summary.totalSuperC || 0).toFixed(2)} (${summary.productsFoundSuperC || 0}/${summary.totalProducts} produits)
 • Meilleur choix: ${summary.bestStore}
 • Économie: $${(summary.totalSavings || 0).toFixed(2)} (${summary.savingsPercentage || 0}%)
 
 DÉTAIL DES PRODUITS:`;
 
     (detailedComparison || []).forEach((item, index) => {
-      data += `\n${index + 1}. ${item.product}: `;
+      data += `\n${index + 1}. ${item.originalProduct}: `;
       
       if (item.bestStore) {
         data += `Meilleur prix: $${(item.bestPrice || 0).toFixed(2)} chez ${item.bestStore}`;
         if ((item.savings || 0) > 0) data += ` (Économie: $${(item.savings || 0).toFixed(2)})`;
       } else {
-        data += `Non trouvé dans les deux magasins`;
+        data += `Non trouvé dans les circulaires`;
       }
     });
 
-    // Ajouter les produits manquants
     const missingProducts = summary.totalProducts - summary.productsFound;
     if (missingProducts > 0) {
-      data += `\n\n⚠️  ${missingProducts} produit(s) non trouvé(s) - vérifiez les circulaires`;
+      data += `\n\n⚠️ ${missingProducts} produit(s) non trouvé(s) - vérifiez les circulaires`;
     }
 
     return data;
@@ -145,24 +145,37 @@ DÉTAIL DES PRODUITS:`;
     const { summary } = dbData;
     
     if (!summary || summary.productsFound === 0) {
-      return "🔍 Aucun produit trouvé dans les deux supermarchés. Essayez avec des termes plus génériques ou vérifiez les circulaires directement.";
+      return "🔍 Aucun produit trouvé dans les trois supermarchés. Essayez avec des termes plus génériques ou vérifiez les circulaires directement.";
     }
 
     if (summary.bestStore === "Égalité") {
-      return `⚖️ **Prix identiques à $${(summary.totalIga || 0).toFixed(2)}**
+      return `⚖️ **Prix similaires dans tous les magasins**
+• IGA: $${(summary.totalIga || 0).toFixed(2)} (${summary.productsFoundIga} produits)
+• Metro: $${(summary.totalMetro || 0).toFixed(2)} (${summary.productsFoundMetro} produits)
+• Super C: $${(summary.totalSuperC || 0).toFixed(2)} (${summary.productsFoundSuperC} produits)
 • Produits trouvés: ${summary.productsFound}/${summary.totalProducts}
-• Choix basé sur: Préférence personnelle ou proximité
-💡 Conseil: Vérifiez les promotions exclusives en magasin ou les programmes de fidélité.`;
+
+💡 Conseil: Choisissez selon votre proximité ou préférence personnelle.`;
     }
 
     const savingsText = summary.totalSavings > 0 ? 
       `• Économie: $${summary.totalSavings.toFixed(2)} (${summary.savingsPercentage}%)` : 
       '• Différence minime';
 
+    // Trouver le total du meilleur magasin
+    const bestTotal = summary.bestStore === "IGA" ? summary.totalIga :
+                      summary.bestStore === "Metro" ? summary.totalMetro :
+                      summary.totalSuperC;
+
     return `🛒 **Meilleur choix: ${summary.bestStore}**
 ${savingsText}
-• Total: $${(summary.bestStore === "IGA" ? summary.totalIga : summary.totalMetro).toFixed(2)}
+• Total: $${bestTotal.toFixed(2)}
+• Comparaison:
+  - IGA: $${summary.totalIga.toFixed(2)} (${summary.productsFoundIga} produits)
+  - Metro: $${summary.totalMetro.toFixed(2)} (${summary.productsFoundMetro} produits)
+  - Super C: $${summary.totalSuperC.toFixed(2)} (${summary.productsFoundSuperC} produits)
 • Produits trouvés: ${summary.productsFound}/${summary.totalProducts}
+
 💡 Conseil: ${summary.bestStore} offre le meilleur prix pour votre panier actuel.`;
   }
 }

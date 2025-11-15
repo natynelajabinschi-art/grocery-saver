@@ -21,7 +21,7 @@ async function hasImportedToday(): Promise<{ hasImported: boolean; count?: numbe
 }
 
 export async function GET(req: NextRequest) {
-  const stores = ["IGA", "Metro"] as const;
+  const stores = ["IGA", "Metro", "Super-C"] as const; // 🔥 AJOUT DE SUPER-C
   const postalCode = "H2S0B8";
 
   try {
