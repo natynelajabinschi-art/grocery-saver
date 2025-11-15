@@ -292,11 +292,11 @@ ${renderPriceComparison(data)}`,
   return (
     <div className="card shadow-lg border-0" style={{ height: '45rem', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
-      <div className="card-header bg-success text-white py-3">
+      <div className="card-header text-white py-3" style={{backgroundColor: '#4DD0E1'}}>
         <div className="d-flex align-items-center">
           <Bot size={24} className="me-2" />
           <h5 className="mb-0 fw-bold">Assistant SmartShopper</h5>
-          <span className="badge bg-light text-success ms-auto">
+          <span className="badge bg-light text-white ms-auto" style={{color: '#4DD0E1', backgroundColor: 'white !important'}}>
             {isTyping ? '✍️ En train d\'écrire...' : '🟢 En ligne'}
           </span>
         </div>
@@ -312,14 +312,14 @@ ${renderPriceComparison(data)}`,
             <div
               className={`rounded-3 p-3 shadow-sm ${
                 msg.sender === 'user'
-                  ? 'bg-primary text-white'
+                  ? 'text-white'
                   : 'bg-white text-dark border'
               }`}
-              style={{ maxWidth: '85%' }}
+              style={{ maxWidth: '85%', backgroundColor: msg.sender === 'user' ? '#4DD0E1' : undefined }}
             >
               <div className="d-flex align-items-center mb-2">
                 {msg.sender === 'bot' ? (
-                  <Bot size={16} className="me-2 text-success" />
+                  <Bot size={16} className="me-2" style={{color: '#4DD0E1'}} />
                 ) : (
                   <User size={16} className="me-2 text-white" />
                 )}
@@ -340,7 +340,7 @@ ${renderPriceComparison(data)}`,
           <div className="d-flex justify-content-start mb-3">
             <div className="bg-white rounded-3 p-3 shadow-sm border">
               <div className="d-flex align-items-center">
-                <Bot size={16} className="me-2 text-success" />
+                <Bot size={16} className="me-2" style={{color: '#4DD0E1'}} />
                 <small className="fw-bold">SmartShopper</small>
               </div>
               <div className="typing-dots mt-2">
@@ -362,8 +362,8 @@ ${renderPriceComparison(data)}`,
             {items.map((item, i) => (
               <span
                 key={i}
-                className="badge bg-success d-flex align-items-center gap-1"
-                style={{ fontSize: '0.85rem' }}
+                className="badge d-flex align-items-center gap-1 text-white"
+                style={{ fontSize: '0.85rem', backgroundColor: '#4DD0E1' }}
               >
                 <CheckCircle size={12} />
                 {item}

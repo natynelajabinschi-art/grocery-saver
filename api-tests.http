@@ -1,0 +1,94 @@
+### 🧪 TESTS API SMART SHOPPER
+### Base URL: http://localhost:3000
+
+### Test 1 - Produits basiques simples
+POST http://localhost:3000/api/compare
+Content-Type: application/json
+
+{
+  "items": ["lait", "œufs", "pain"]
+}
+
+### Test 2 - Viandes et accompagnements
+POST http://localhost:3000/api/compare
+Content-Type: application/json
+
+{
+  "items": ["poulet", "riz", "carottes", "oignons"]
+}
+
+### Test 3 - Petit déjeuner
+POST http://localhost:3000/api/compare
+Content-Type: application/json
+
+{
+  "items": ["café", "sucre", "lait", "beurre", "confiture"]
+}
+
+### Test 4 - Produits d'épicerie
+POST http://localhost:3000/api/compare
+Content-Type: application/json
+
+{
+  "items": ["pâtes", "sauce tomate", "fromage", "huile", "sel"]
+}
+
+### Test 5 - Un seul produit
+POST http://localhost:3000/api/compare
+Content-Type: application/json
+
+{
+  "items": ["lait"]
+}
+
+### Test 6 - Produits avec spécifications
+POST http://localhost:3000/api/compare
+Content-Type: application/json
+
+{
+  "items": ["lait 2%", "œufs gros", "pain complet", "poulet sans peau"]
+}
+
+### Test 7 - Fruits et légumes
+POST http://localhost:3000/api/compare
+Content-Type: application/json
+
+{
+  "items": ["pommes", "bananes", "salade", "tomates", "concombres"]
+}
+
+### Test 8 - Produits de boulangerie
+POST http://localhost:3000/api/compare
+Content-Type: application/json
+
+{
+  "items": ["baguette", "croissants", "brioche", "gâteau"]
+}
+
+### Test 9 - Produits laitiers
+POST http://localhost:3000/api/compare
+Content-Type: application/json
+
+{
+  "items": ["yaourt", "fromage blanc", "crème", "beurre"]
+}
+
+### Test 10 - Produits avec marques (test de robustesse)
+POST http://localhost:3000/api/compare
+Content-Type: application/json
+
+{
+  "items": ["lait Natrel", "œufs Burnbrae", "pain Weston"]
+}
+
+### 🔍 TEST AVEC DONNÉES MOCKÉES (pour isoler le problème)
+POST http://localhost:3000/api/compare
+Content-Type: application/json
+X-Test-Mode: mock
+
+{
+  "items": ["lait", "œufs", "pain"]
+}
+
+### 🩺 TEST DE SANTÉ DE L'API
+GET http://localhost:3000/api/health

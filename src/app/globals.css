@@ -4,49 +4,409 @@
 @tailwind utilities;
 
 :root {
-  --bs-primary: #667eea;
-  --bs-primary-rgb: 102, 126, 234;
-  --bs-secondary: #764ba2;
-  --bs-success: #10b981;
-  --bs-info: #3b82f6;
-  --bs-warning: #f59e0b;
-  --bs-danger: #ef4444;
+  /* Couleurs Flipp principales */
+  --flipp-cyan: #4DD0E1;
+  --flipp-blue: #00A0DC;
+  --flipp-light-blue: #D6EEF7;
+  --flipp-dark-gray: #424242;
+  --flipp-medium-gray: #6C757D;
+  --flipp-light-gray: #F8F9FA;
+  
+  /* Couleurs magasins */
+  --walmart-blue: #0071CE;
+  --metro-red: #E31837;
+  --superc-red: #E74C3C;
+  
+  /* Bootstrap overrides pour Flipp */
+  --bs-primary: #00A0DC;
+  --bs-primary-rgb: 0, 160, 220;
+  --bs-secondary: #6C757D;
+  --bs-success: #28A745;
+  --bs-info: #4DD0E1;
+  --bs-warning: #FFC107;
+  --bs-danger: #DC3545;
+  --bs-dark: #212529;
 }
 
-/* Smooth scrolling */
+/* ============================================
+   BASE STYLES
+   ============================================ */
 html {
   scroll-behavior: smooth;
 }
 
 body {
-  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', 
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 
     'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 
     'Helvetica Neue', sans-serif;
+  background-color: #FFFFFF;
+  color: #212529;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Bootstrap overrides */
+/* ============================================
+   CONTENEUR
+   ============================================ */
+.container-fluid {
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+/* ============================================
+   TYPOGRAPHIE FLIPP
+   ============================================ */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.3;
+  color: #212529;
+}
+
+h1 {
+  font-size: 1.75rem;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.display-6 {
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+/* ============================================
+   BOUTONS STYLE FLIPP
+   ============================================ */
+.btn {
+  border-radius: 6px;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
 .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-  transition: transform 0.2s, box-shadow 0.2s;
+  background-color: var(--flipp-blue);
+  border-color: var(--flipp-blue);
+  color: white;
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  background-color: #0089BD;
+  border-color: #0089BD;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 160, 220, 0.3);
 }
 
+.btn-dark {
+  background-color: #212529;
+  border-color: #212529;
+}
+
+.btn-dark:hover {
+  background-color: #000000;
+  border-color: #000000;
+  transform: translateY(-1px);
+}
+
+.btn-success {
+  background-color: #28A745;
+  border-color: #28A745;
+}
+
+.btn-success:hover {
+  background-color: #218838;
+  border-color: #218838;
+  transform: translateY(-1px);
+}
+
+.btn-outline-secondary {
+  color: #6C757D;
+  border-color: #CED4DA;
+}
+
+.btn-outline-secondary:hover {
+  background-color: #F8F9FA;
+  color: #495057;
+  border-color: #ADB5BD;
+}
+
+.btn-outline-light {
+  color: #FFFFFF;
+  border-color: #FFFFFF;
+}
+
+.btn-outline-light:hover {
+  background-color: #FFFFFF;
+  color: #212529;
+}
+
+.btn-light {
+  background-color: #FFFFFF;
+  border-color: #DEE2E6;
+  color: #495057;
+}
+
+.btn-light:hover {
+  background-color: #F8F9FA;
+}
+
+/* Boutons pills */
+.rounded-pill {
+  border-radius: 50rem !important;
+}
+
+/* ============================================
+   CARDS
+   ============================================ */
 .card {
-  border-radius: 12px;
-  transition: transform 0.2s, box-shadow 0.2s;
+  border-radius: 8px;
+  border: 1px solid #E0E0E0;
+  transition: all 0.2s ease;
+  background-color: #FFFFFF;
 }
 
 .card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-/* Chat animations */
+.card-header {
+  background-color: #FFFFFF;
+  border-bottom: 1px solid #E0E0E0;
+  padding: 1rem 1.5rem;
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+/* ============================================
+   BACKGROUNDS FLIPP
+   ============================================ */
+.bg-light {
+  background-color: var(--flipp-light-gray) !important;
+}
+
+.bg-white {
+  background-color: #FFFFFF !important;
+}
+
+/* Background cyan pour l'assistant SmartShopper */
+.bg-flipp-cyan {
+  background-color: var(--flipp-cyan) !important;
+}
+
+/* Background bleu clair pour code postal */
+.bg-flipp-light-blue {
+  background-color: var(--flipp-light-blue) !important;
+}
+
+/* ============================================
+   BORDURES
+   ============================================ */
+.border {
+  border: 1px solid #DEE2E6 !important;
+}
+
+.rounded {
+  border-radius: 8px !important;
+}
+
+/* Bordures spéciales pour les cartes magasins */
+.store-card {
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.store-card-walmart {
+  border-color: var(--walmart-blue);
+}
+
+.store-card-highlighted {
+  border: 3px solid var(--superc-red) !important;
+  border-width: 3px !important;
+}
+
+/* ============================================
+   INPUTS ET FORMULAIRES
+   ============================================ */
+.form-control {
+  border-radius: 6px;
+  border: 1px solid #CED4DA;
+  padding: 0.625rem 0.875rem;
+  font-size: 1rem;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.form-control:focus {
+  border-color: var(--flipp-blue);
+  box-shadow: 0 0 0 0.2rem rgba(0, 160, 220, 0.15);
+  outline: 0;
+}
+
+.form-control-lg {
+  padding: 0.75rem 1rem;
+  font-size: 1.125rem;
+}
+
+.input-group {
+  border-radius: 6px;
+}
+
+.input-group .btn {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.input-group .form-control {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* ============================================
+   COULEURS DE TEXTE
+   ============================================ */
+.text-success {
+  color: #28A745 !important;
+}
+
+.text-danger {
+  color: #DC3545 !important;
+}
+
+.text-muted {
+  color: #6C757D !important;
+}
+
+.text-white {
+  color: #FFFFFF !important;
+}
+
+.text-white-50 {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.text-dark {
+  color: #212529 !important;
+}
+
+/* Couleurs spéciales magasins */
+.text-walmart {
+  color: var(--walmart-blue) !important;
+}
+
+/* ============================================
+   OMBRES
+   ============================================ */
+.shadow-sm {
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+.shadow {
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.shadow-lg {
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175) !important;
+}
+
+/* ============================================
+   BADGES
+   ============================================ */
+.badge {
+  border-radius: 6px;
+  padding: 0.35em 0.65em;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.badge.bg-success {
+  background-color: #28A745 !important;
+}
+
+.badge.bg-light {
+  background-color: #F8F9FA !important;
+  color: #212529;
+}
+
+.badge.rounded-circle {
+  width: 25px;
+  height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+/* ============================================
+   LISTE
+   ============================================ */
+.list-unstyled {
+  padding-left: 0;
+  list-style: none;
+}
+
+ul {
+  padding-left: 1.5rem;
+}
+
+/* ============================================
+   FOOTER
+   ============================================ */
+footer {
+  background-color: var(--flipp-dark-gray);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+footer h6 {
+  color: #FFFFFF;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+footer a {
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+footer a:hover {
+  color: rgba(255, 255, 255, 0.9) !important;
+  text-decoration: none !important;
+}
+
+footer .btn-outline-light {
+  color: rgba(255, 255, 255, 0.8);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+footer .btn-outline-light:hover {
+  color: #212529;
+  background-color: #FFFFFF;
+  border-color: #FFFFFF;
+}
+
+/* ============================================
+   IMAGES
+   ============================================ */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+.img-fluid {
+  max-width: 100%;
+  height: auto;
+}
+
+.img-contain {
+  object-fit: contain;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -62,13 +422,67 @@ body {
   animation: fadeIn 0.3s ease-out;
 }
 
-/* Custom scrollbar */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner-border {
+  animation: spinner 0.75s linear infinite;
+}
+
+/* ============================================
+   TRANSITIONS SMOOTH
+   ============================================ */
+.btn,
+.card,
+.form-control,
+a {
+  transition: all 0.2s ease;
+}
+
+/* ============================================
+   SCROLLBAR PERSONNALISÉE
+   ============================================ */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F1F1F1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CCC;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
 .overflow-auto::-webkit-scrollbar {
   width: 8px;
 }
 
 .overflow-auto::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: #F1F1F1;
   border-radius: 10px;
 }
 
@@ -81,34 +495,60 @@ body {
   background: #555;
 }
 
-/* Badge styles */
-.badge {
-  font-weight: 500;
-  padding: 0.5em 0.75em;
+/* ============================================
+   UTILITIES
+   ============================================ */
+.cursor-pointer {
+  cursor: pointer;
 }
 
-/* Input focus */
-.form-control:focus {
-  border-color: var(--bs-primary);
-  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+.text-decoration-none {
+  text-decoration: none !important;
 }
 
-/* Alert custom */
-.alert-info {
-  background: linear-gradient(135deg, #e0e7ff 0%, #ddd6fe 100%);
-  color: #4338ca;
-  border: none;
+.text-decoration-line-through {
+  text-decoration: line-through !important;
 }
 
-/* Navbar */
-.navbar-dark {
-  background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+.fw-normal {
+  font-weight: 400 !important;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .display-4 {
-    font-size: 2rem;
+.fw-bold {
+  font-weight: 700 !important;
+}
+
+/* Prix */
+.price-current {
+  color: #DC3545;
+  font-weight: bold;
+}
+
+.price-old {
+  color: #6C757D;
+  text-decoration: line-through;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 991.98px) {
+  h1 {
+    font-size: 1.5rem;
+  }
+  
+  .display-6 {
+    font-size: 1.5rem;
+  }
+  
+  .container-fluid {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  
+  .py-5 {
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
   }
   
   .card-body {
@@ -116,44 +556,83 @@ body {
   }
 }
 
-/* Loading spinner */
-@keyframes spinner {
-  to {
-    transform: rotate(360deg);
+@media (max-width: 767.98px) {
+  h1 {
+    font-size: 1.25rem;
+  }
+  
+  .display-6 {
+    font-size: 1.25rem;
+  }
+  
+  .btn-lg {
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
   }
 }
 
-.spinner-border {
-  animation: spinner 0.75s linear infinite;
+/* ============================================
+   ACCESSIBILITÉ
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
-/* Smooth transitions */
-* {
-  transition: background-color 0.2s ease, color 0.2s ease;
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--flipp-blue);
+  outline-offset: 2px;
 }
 
-/* Button close custom */
-.btn-close-white {
-  filter: invert(1) grayscale(100%) brightness(200%);
+/* ============================================
+   CLASSES SPÉCIALES FLIPP
+   ============================================ */
+
+/* Pour l'assistant SmartShopper */
+.assistant-box {
+  background-color: var(--flipp-cyan);
+  border-radius: 8px;
+  padding: 1.5rem;
 }
 
-/* List group items */
-.list-group-item {
-  border-left: none;
-  border-right: none;
-  padding: 0.75rem 0;
+/* Pour les cartes de suggestions */
+.suggestion-pills .btn {
+  font-size: 0.875rem;
+  padding: 0.375rem 0.75rem;
 }
 
-.list-group-item:first-child {
-  border-top: none;
+/* Pour les cartes magasins avec prix */
+.store-price-card {
+  text-align: center;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #DEE2E6;
+  background-color: #FFFFFF;
+  transition: all 0.2s ease;
 }
 
-.list-group-item:last-child {
-  border-bottom: none;
+.store-price-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-/* Footer links */
-footer a:hover {
-  color: white !important;
-  text-decoration: underline !important;
+/* Opacity pour backgrounds */
+.bg-opacity-50 {
+  background-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.bg-opacity-75 {
+  background-color: rgba(255, 255, 255, 0.75) !important;
+}
+
+/* Pour le code postal */
+.postal-code-box {
+  background-color: var(--flipp-light-blue);
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
 }
