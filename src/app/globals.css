@@ -1,870 +1,208 @@
-/* ==========================================
-   RESET ET BASE
-   ========================================== */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* app/globals.css */
+:root {
+  /* Couleurs Flipp */
+  --flipp-green: #10b981;
+  --flipp-green-dark: #059669;
+  --flipp-orange: #f59e0b;
+  --flipp-orange-dark: #d97706;
+  --flipp-dark: #1f2937;
+  --flipp-gray: #6b7280;
+  --flipp-light: #f8f9fa;
 }
 
+/* Styles généraux */
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: #f5f5f5;
-  color: #333;
-  line-height: 1.6;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  background-color: var(--flipp-light);
 }
 
-/* ==========================================
-   CONTENEUR PRINCIPAL
-   ========================================== */
-.flipp-container {
-  min-height: 100vh;
-  background-color: #f5f5f5;
-}
-
-/* ==========================================
-   HEADER
-   ========================================== */
-.flipp-header {
-  background-color: #fff;
-  border-bottom: 1px solid #e5e5e5;
-  padding: 16px 24px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.flipp-header-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.flipp-header-left {
-  display: flex;
-  align-items: center;
-  gap: 32px;
-}
-
-.flipp-logo {
-  font-size: 28px;
+/* Navigation */
+.navbar-brand {
   font-weight: 700;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin: 0;
+  color: var(--flipp-dark) !important;
 }
 
-.flipp-nav {
-  display: flex;
-  gap: 24px;
+.nav-link {
+  color: var(--flipp-dark) !important;
+  transition: color 0.2s ease;
 }
 
-.flipp-nav-link {
-  color: #333;
-  text-decoration: none;
-  font-size: 14px;
-  transition: color 0.2s;
+.nav-link:hover {
+  color: var(--flipp-green) !important;
 }
 
-.flipp-nav-link:hover {
-  color: #3b82f6;
+/* Boutons personnalisés */
+.btn-primary {
+  background-color: var(--flipp-green);
+  border-color: var(--flipp-green);
 }
 
-.flipp-nav-link-active {
-  color: #3b82f6;
-  font-weight: 600;
+.btn-primary:hover {
+  background-color: var(--flipp-green-dark);
+  border-color: var(--flipp-green-dark);
 }
 
-.flipp-header-right {
-  display: flex;
-  gap: 16px;
-  align-items: center;
+.btn-outline-primary {
+  color: var(--flipp-green);
+  border-color: var(--flipp-green);
 }
 
-.flipp-header-btn {
-  padding: 8px 16px;
+.btn-outline-primary:hover {
+  background-color: var(--flipp-green);
+  border-color: var(--flipp-green);
+  color: white;
+}
+
+/* Cartes et ombres */
+.card {
   border: none;
-  background: transparent;
-  cursor: pointer;
-  font-size: 14px;
-  color: #666;
-  transition: color 0.2s;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.flipp-header-btn:hover {
-  color: #3b82f6;
-}
-
-/* ==========================================
-   HERO SECTION
-   ========================================== */
-.flipp-hero {
-  background-color: #fff;
-  padding: 48px 24px;
-  border-bottom: 1px solid #e5e5e5;
-}
-
-.flipp-hero-content {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.flipp-hero-title {
-  font-size: 32px;
-  font-weight: 600;
-  color: #111;
-  margin-bottom: 40px;
-  line-height: 1.4;
-}
-
-.flipp-features {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 24px;
-}
-
-.flipp-feature {
-  text-align: center;
-}
-
-.flipp-feature-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
-}
-
-.flipp-feature-text {
-  font-weight: 600;
-  font-size: 14px;
-  color: #333;
-}
-
-/* ==========================================
-   MAIN CONTENT
-   ========================================== */
-.flipp-main {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 40px 24px;
-}
-
-.flipp-main-content {
-  display: grid;
-  grid-template-columns: 1fr 400px;
-  gap: 32px;
-}
-
-/* ==========================================
-   CHATBOT CARD
-   ========================================== */
-.flipp-chatbot-card {
-  background-color: #e3f2ff;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 24px;
-}
-
-.flipp-chatbot-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  color: #3b82f6;
-}
-
-.flipp-chatbot-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
-}
-
-/* ==========================================
-   INPUT SECTION
-   ========================================== */
-.flipp-input-section {
-  background-color: #fff;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
-}
-
-.flipp-input-label {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 12px;
-}
-
-.flipp-suggestions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.flipp-suggestion-btn {
-  padding: 6px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  background-color: #fff;
-  cursor: pointer;
-  font-size: 13px;
-  color: #333;
-  transition: all 0.2s;
-}
-
-.flipp-suggestion-btn:hover {
-  background-color: #f9fafb;
-  border-color: #3b82f6;
-  color: #3b82f6;
-}
-
-.flipp-textarea {
-  width: 100%;
-  min-height: 80px;
-  padding: 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 14px;
-  margin-bottom: 12px;
-  font-family: inherit;
-  resize: vertical;
-  transition: border-color 0.2s;
-}
-
-.flipp-textarea:focus {
-  outline: none;
-  border-color: #3b82f6;
-}
-
-.flipp-input-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.flipp-mic-btn {
-  padding: 12px;
-  background-color: #f3f4f6;
-  color: #666;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.flipp-mic-btn:hover:not(:disabled) {
-  background-color: #e5e7eb;
-}
-
-.flipp-mic-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.flipp-send-btn {
-  flex: 1;
-  padding: 12px;
-  background-color: #3b82f6;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: background-color 0.2s;
-}
-
-.flipp-send-btn:hover:not(:disabled) {
-  background-color: #2563eb;
-}
-
-.flipp-send-btn:disabled {
-  background-color: #9ca3af;
-  cursor: not-allowed;
-}
-
-/* ==========================================
-   MESSAGES
-   ========================================== */
-.flipp-messages {
-  max-height: 400px;
-  overflow-y: auto;
-  padding-right: 8px;
-}
-
-.flipp-message {
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin-bottom: 12px;
-  font-size: 14px;
-  line-height: 1.5;
-  white-space: pre-line;
-}
-
-.flipp-message-bot {
-  background-color: #f9fafb;
-}
-
-.flipp-message-user {
-  background-color: #e3f2ff;
-}
-
-.flipp-message-header {
-  font-weight: 600;
-  margin-bottom: 4px;
-  font-size: 13px;
-  color: #666;
-}
-
-.flipp-message-text {
-  color: #333;
-}
-
-.flipp-message-time {
-  font-size: 11px;
-  color: #999;
-  margin-top: 4px;
-}
-
-/* ==========================================
-   SHOPPING LIST
-   ========================================== */
-.flipp-shopping-list {
-  background-color: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid #e5e5e5;
-  margin-bottom: 24px;
-}
-
-.flipp-shopping-list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.flipp-shopping-list-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
-  margin: 0;
-}
-
-.flipp-shopping-list-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.flipp-icon-btn {
-  padding: 8px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  background-color: #fff;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.flipp-icon-btn:hover {
-  background-color: #f9fafb;
-  border-color: #3b82f6;
-  color: #3b82f6;
-}
-
-.flipp-shopping-list-items {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.flipp-shopping-list-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 12px;
-  background-color: #f9fafb;
-  border-radius: 6px;
-  font-size: 14px;
-}
-
-.flipp-remove-btn {
-  width: 24px;
-  height: 24px;
-  border: none;
-  background-color: #fee2e2;
-  color: #dc2626;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 18px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.flipp-remove-btn:hover {
-  background-color: #fecaca;
-}
-
-/* ==========================================
-   COMPARISON RESULTS
-   ========================================== */
-.flipp-results {
-  background-color: #fff;
-  border-radius: 12px;
-  padding: 24px;
-  border: 1px solid #e5e5e5;
-}
-
-.flipp-results-title {
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 20px;
-  color: #333;
-}
-
-.flipp-results-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.flipp-result-card {
-  padding: 16px;
-  background-color: #fef3c7;
-  border-radius: 8px;
-  transition: all 0.2s;
-}
-
-.flipp-result-best {
-  background-color: #f0fdf4;
-  border: 2px solid #10b981;
-}
-
-.flipp-result-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.flipp-result-store {
-  font-size: 14px;
-  color: #666;
-}
-
-.flipp-result-badge {
-  background-color: #10b981;
-  color: #fff;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.flipp-result-price {
-  font-size: 24px;
-  font-weight: 700;
-  color: #10b981;
-}
-
-.flipp-result-card:not(.flipp-result-best) .flipp-result-price {
-  color: #333;
-  font-size: 20px;
-  font-weight: 600;
-}
-
-/* ==========================================
-   SUMMARY
-   ========================================== */
-.flipp-summary {
-  padding: 16px;
-  background-color: #f9fafb;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-
-.flipp-summary-title {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 8px;
-  font-weight: 600;
-}
-
-.flipp-summary-item {
-  font-size: 14px;
-  color: #333;
-  margin-bottom: 4px;
-}
-
-.flipp-final-summary {
-  padding: 20px;
-  background-color: #e3f2ff;
-  border-radius: 8px;
-  text-align: center;
-}
-
-.flipp-final-label {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 8px;
-}
-
-.flipp-final-total,
-.flipp-final-store,
-.flipp-final-price {
-  font-size: 16px;
-  margin-bottom: 8px;
-  color: #333;
-}
-
-.flipp-final-store {
-  font-weight: 600;
-}
-
-.flipp-cta-btn {
-  margin-top: 16px;
-  padding: 12px 24px;
-  background-color: #3b82f6;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.flipp-cta-btn:hover {
-  background-color: #2563eb;
-}
-
-/* ==========================================
-   RIGHT SIDEBAR
-   ========================================== */
-.flipp-right-col {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-/* ==========================================
-   POSTAL CODE CARD
-   ========================================== */
-.flipp-postal-card {
-  background-color: #e3f2ff;
-  padding: 20px;
-  border-radius: 12px;
-  text-align: center;
-}
-
-.flipp-postal-text {
-  font-size: 14px;
-  color: #333;
-  margin-bottom: 12px;
-}
-
-.flipp-postal-input-group {
-  display: flex;
-  gap: 8px;
-}
-
-.flipp-postal-input {
-  flex: 1;
-  padding: 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 14px;
-  text-align: center;
-  transition: border-color 0.2s;
-}
-
-.flipp-postal-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-}
-
-.flipp-postal-btn {
-  padding: 10px 16px;
-  background-color: #3b82f6;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s;
-}
-
-.flipp-postal-btn:hover {
-  background-color: #2563eb;
-}
-
-/* ==========================================
-   STORE CARDS
-   ========================================== */
-.flipp-stores {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.flipp-store-card {
-  background-color: #fff;
-  padding: 16px;
-  border-radius: 8px;
-  border: 1px solid #e5e5e5;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  transition: all 0.2s;
-}
-
-.flipp-store-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+.card:hover {
   transform: translateY(-2px);
 }
 
-.flipp-store-info {
+.shadow-sm {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+.shadow {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07) !important;
+}
+
+.shadow-lg {
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Badges et indicateurs */
+.badge-success {
+  background-color: var(--flipp-green);
+}
+
+.text-success {
+  color: var(--flipp-green) !important;
+}
+
+.text-warning {
+  color: var(--flipp-orange) !important;
+}
+
+.bg-success {
+  background-color: var(--flipp-green) !important;
+}
+
+/* Footer amélioré */
+footer.bg-dark {
+  background-color: var(--flipp-dark) !important;
+}
+
+footer .text-light {
+  color: #e5e7eb !important;
+}
+
+footer .text-muted {
+  color: #9ca3af !important;
+}
+
+/* Formulaires */
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--flipp-green);
+  box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.25);
+}
+
+/* Badges ronds pour étapes */
+.badge-step {
+  width: 30px;
+  height: 30px;
+  background-color: var(--flipp-green);
+  color: white;
+  border-radius: 50%;
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-.flipp-store-logo {
-  font-size: 24px;
-}
-
-.flipp-store-name {
-  font-size: 16px;
+  justify-content: center;
   font-weight: 600;
-  color: #333;
+  font-size: 0.875rem;
 }
 
-.flipp-store-price {
-  font-size: 18px;
-  font-weight: 700;
-  color: #3b82f6;
+/* Animation pour les économies */
+.savings-pulse {
+  animation: pulse 2s infinite;
 }
 
-/* ==========================================
-   ANIMATIONS
-   ========================================== */
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
   }
-  to {
-    transform: rotate(360deg);
+  70% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
   }
 }
 
-.flipp-spinner {
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .navbar-nav {
+    text-align: center;
+  }
+  
+  .d-flex.gap-3 {
+    justify-content: center;
+    margin-top: 1rem;
+  }
+  
+  .card-body {
+    padding: 1rem;
+  }
+}
+
+/* Styles pour les prix et économies */
+.best-price {
+  position: relative;
+  overflow: hidden;
+}
+
+.best-price::before {
+  content: "★";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: var(--flipp-orange);
+  font-size: 1.2rem;
+}
+
+/* Loading states */
+.loading-spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid var(--flipp-green);
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
   animation: spin 1s linear infinite;
 }
 
-/* ==========================================
-   SCROLLBAR
-   ========================================== */
-.flipp-messages::-webkit-scrollbar {
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
   width: 6px;
 }
 
-.flipp-messages::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
   background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--flipp-green);
   border-radius: 3px;
 }
 
-.flipp-messages::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 3px;
-}
-
-.flipp-messages::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
-}
-
-/* ==========================================
-   FOOTER
-   ========================================== */
-.flipp-footer {
-  background-color: #1f2937;
-  color: #fff;
-  padding: 48px 24px 24px;
-  margin-top: 80px;
-}
-
-.flipp-footer-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 40px;
-  margin-bottom: 40px;
-}
-
-.flipp-footer-section {
-  display: flex;
-  flex-direction: column;
-}
-
-.flipp-footer-title {
-  font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 12px;
-  color: #fff;
-}
-
-.flipp-footer-description {
-  font-size: 14px;
-  color: #9ca3af;
-  line-height: 1.6;
-}
-
-.flipp-footer-subtitle {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: #fff;
-}
-
-.flipp-footer-links {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.flipp-footer-link {
-  color: #9ca3af;
-  text-decoration: none;
-  font-size: 14px;
-  transition: color 0.2s;
-}
-
-.flipp-footer-link:hover {
-  color: #3b82f6;
-}
-
-.flipp-footer-bottom {
-  border-top: 1px solid #374151;
-  padding-top: 24px;
-}
-
-.flipp-footer-bottom-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.flipp-footer-copyright {
-  font-size: 14px;
-  color: #9ca3af;
-  margin: 0;
-}
-
-.flipp-footer-socials {
-  display: flex;
-  gap: 16px;
-}
-
-.flipp-social-link {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background-color: #374151;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #9ca3af;
-  transition: all 0.2s;
-}
-
-.flipp-social-link:hover {
-  background-color: #3b82f6;
-  color: #fff;
-  transform: translateY(-2px);
-}
-
-/* ==========================================
-   RESPONSIVE
-   ========================================== */
-@media (max-width: 1024px) {
-  .flipp-main-content {
-    grid-template-columns: 1fr;
-  }
-
-  .flipp-header-right {
-    display: none;
-  }
-
-  .flipp-nav {
-    gap: 16px;
-  }
-
-  .flipp-footer-content {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 768px) {
-  .flipp-hero-title {
-    font-size: 24px;
-  }
-
-  .flipp-features {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .flipp-header-left {
-    gap: 16px;
-  }
-
-  .flipp-nav {
-    display: none;
-  }
-
-  .flipp-main {
-    padding: 20px 12px;
-  }
-
-  .flipp-chatbot-card,
-  .flipp-results,
-  .flipp-shopping-list {
-    padding: 16px;
-  }
-
-  .flipp-footer-content {
-    grid-template-columns: 1fr;
-    gap: 32px;
-  }
-
-  .flipp-footer-bottom-content {
-    flex-direction: column;
-    text-align: center;
-  }
+::-webkit-scrollbar-thumb:hover {
+  background: var(--flipp-green-dark);
 }

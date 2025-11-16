@@ -333,13 +333,10 @@ Je vous aide à comparer les prix entre Walmart, Metro et Super C.
   return (
     <div className="card shadow-lg border-0" style={{ height: '45rem', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
-      <div className="card-header bg-success text-white py-3">
+      <div className="card-header bg-info text-white py-3">
         <div className="d-flex align-items-center">
           <Bot size={24} className="me-2" />
           <h5 className="mb-0 fw-bold">Assistant SmartShopper</h5>
-          <span className="badge bg-light text-success ms-auto">
-            {isTyping ? '✏️ En train d\'écrire...' : '🟢 En ligne'}
-          </span>
         </div>
         <small className="d-block mt-1 opacity-75">
           Compare Walmart, Metro et Super C
@@ -358,7 +355,7 @@ Je vous aide à comparer les prix entre Walmart, Metro et Super C.
                 msg.sender === 'user'
                   ? 'bg-primary text-white'
                   : msg.isResult
-                  ? 'bg-success bg-opacity-10 border border-success'
+                  ? 'bg-info bg-opacity-10 border border-info'
                   : 'bg-white text-dark border'
               }`}
               style={{ maxWidth: '85%' }}
@@ -366,9 +363,9 @@ Je vous aide à comparer les prix entre Walmart, Metro et Super C.
               <div className="d-flex align-items-center mb-2">
                 {msg.sender === 'bot' ? (
                   msg.isResult ? (
-                    <Award size={16} className="me-2 text-success" />
+                    <Award size={16} className="me-2 text-info" />
                   ) : (
-                    <Bot size={16} className="me-2 text-success" />
+                    <Bot size={16} className="me-2 text-info" />
                   )
                 ) : (
                   <User size={16} className="me-2 text-white" />
@@ -385,7 +382,7 @@ Je vous aide à comparer les prix entre Walmart, Metro et Super C.
               </div>
               {msg.isResult && msg.data && msg.data.bestStore !== "Égalité" && (
                 <div className="mt-2 pt-2 border-top">
-                  <small className="d-flex align-items-center text-success fw-bold">
+                  <small className="d-flex align-items-center text-info fw-bold">
                     <TrendingDown size={14} className="me-1" />
                     Économisez ${msg.data.totalSavings.toFixed(2)} chez {msg.data.bestStore}
                   </small>
@@ -398,7 +395,7 @@ Je vous aide à comparer les prix entre Walmart, Metro et Super C.
           <div className="d-flex justify-content-start mb-3">
             <div className="bg-white rounded-3 p-3 shadow-sm border">
               <div className="d-flex align-items-center">
-                <Bot size={16} className="me-2 text-success" />
+                <Bot size={16} className="me-2 text-info" />
                 <small className="fw-bold">SmartShopper</small>
               </div>
               <div className="typing-dots mt-2">
@@ -429,7 +426,7 @@ Je vous aide à comparer les prix entre Walmart, Metro et Super C.
             {items.map((item, i) => (
               <span
                 key={i}
-                className="badge bg-success d-flex align-items-center gap-1"
+                className="badge bg-info d-flex align-items-center gap-1"
                 style={{ fontSize: '0.85rem' }}
               >
                 <CheckCircle size={12} />
@@ -476,7 +473,7 @@ Je vous aide à comparer les prix entre Walmart, Metro et Super C.
             disabled={loading}
           />
           <button
-            className="btn btn-success px-4"
+            className="btn btn-info px-4"
             onClick={handleSend}
             disabled={!inputValue.trim() || loading}
           >

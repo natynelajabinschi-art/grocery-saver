@@ -151,6 +151,7 @@ export function determineBestStore(
   return "Égalité"; // Fallback
 }
 
+
 // ========================================
 // COMPARAISON DÉTAILLÉE
 // ========================================

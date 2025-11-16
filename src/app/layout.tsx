@@ -11,9 +11,8 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "SmartShopper - Comparateur de prix IGA vs Metro",
-  description:
-    "Assistant IA intelligent pour comparer les prix entre IGA et Metro et optimiser vos courses",
+  title: "Flipp - Économisez sur vos courses",
+  description: "Assistant IA intelligent pour comparer les prix et optimiser vos courses",
 };
 
 export default function RootLayout({
@@ -27,12 +26,11 @@ export default function RootLayout({
         {/* NAVBAR */}
         <nav className="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
           <div className="container-fluid">
-
             {/* LOGO À GAUCHE */}
             <a className="navbar-brand d-flex align-items-center" href="/">
               <img
                 src="/flipp-logo.png"
-                alt="Logo"
+                alt="Flipp Logo"
                 width="120"
                 height="auto"
                 className="me-2"
@@ -51,7 +49,6 @@ export default function RootLayout({
 
             {/* CONTENU MENU */}
             <div className="collapse navbar-collapse" id="mainNavbar">
-
               {/* MENU PRINCIPAL */}
               <ul className="navbar-nav me-auto mb-2 mb-lg-0">
                 <li className="nav-item">
@@ -66,7 +63,7 @@ export default function RootLayout({
                 </li>
                 <li className="nav-item">
                   <a className="nav-link fw-semibold" href="/statistiques">
-                    Liste d’achats
+                    Liste d'achats
                   </a>
                 </li>
                 <li className="nav-item">
@@ -83,7 +80,6 @@ export default function RootLayout({
 
               {/* MENU DROITE — LANGUE + CONNEXION */}
               <div className="d-flex align-items-center gap-3">
-
                 {/* Sélecteur de langue */}
                 <select className="form-select form-select-sm" style={{ width: "90px" }}>
                   <option value="fr">FR</option>
@@ -91,10 +87,9 @@ export default function RootLayout({
                 </select>
 
                 {/* Connexion */}
-                <a href="/login" className="btn btn-outline-primary btn-sm">
+                <a href="javascript;" className="btn btn-outline-primary btn-sm">
                   Connexion
                 </a>
-
               </div>
             </div>
           </div>
@@ -103,12 +98,13 @@ export default function RootLayout({
         {/* MAIN */}
         <main className="min-vh-100 bg-light">{children}</main>
 
-        {/* FOOTER */}
-        <footer className="bg-dark text-white py-4 mt-5">
+        {/* FOOTER COMPLET */}
+        <footer className="bg-dark text-white py-5">
           <div className="container">
-            <hr className="border-white-50" />
-            <div className="text-center text-white-50">
-              © {new Date().getFullYear()} SmartShopper — Tous droits réservés
+            {/* Ligne de séparation et copyright */}
+            <hr className="border-white-50 my-4" />
+            <div className="text-center text-white-50 small">
+              © {new Date().getFullYear()} Flipp — Tous droits réservés
             </div>
           </div>
         </footer>
