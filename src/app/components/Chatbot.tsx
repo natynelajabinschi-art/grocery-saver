@@ -47,10 +47,9 @@ Je vous aide à comparer les prix entre Walmart, Metro et Super C.
   const [isTyping, setIsTyping] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [suggestions] = useState<string[]>([
-    "lait, œufs, pain",
-    "poulet, riz, légumes",
-    "café, sucre, farine",
-    "pâtes, sauce tomate, fromage"
+    "poulet, fromage, boeuf, carotte, biscuit",
+    "baguette, croissant, bagel, chocolat ",
+    "pâtes, pizza, fromage, poisson, pomme"
   ]);
   const [shoppingList, setShoppingList] = useState<string[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -331,17 +330,21 @@ Je vous aide à comparer les prix entre Walmart, Metro et Super C.
   };
 
   return (
-    <div className="card shadow-lg border-0" style={{ height: '45rem', display: 'flex', flexDirection: 'column' }}>
+    <div className="card shadow-lg border-0" style={{ height: '43rem', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <div className="card-header bg-info text-white py-3">
-        <div className="d-flex align-items-center">
-          <Bot size={24} className="me-2" />
-          <h5 className="mb-0 fw-bold">Assistant SmartShopper</h5>
+        <div className="d-flex align-items-center justify-content-between">
+          <div className="d-flex align-items-center">
+            <Bot size={24} className="me-2" />
+            <h5 className="mb-0 fw-bold">Assistant SmartShopper</h5>
+          </div>
         </div>
+
         <small className="d-block mt-1 opacity-75">
           Compare Walmart, Metro et Super C
         </small>
       </div>
+
 
       {/* Messages */}
       <div className="card-body overflow-auto flex-grow-1 p-3" style={{ backgroundColor: '#f8f9fa' }}>
@@ -382,7 +385,7 @@ Je vous aide à comparer les prix entre Walmart, Metro et Super C.
               </div>
               {msg.isResult && msg.data && msg.data.bestStore !== "Égalité" && (
                 <div className="mt-2 pt-2 border-top">
-                  <small className="d-flex align-items-center text-info fw-bold">
+                  <small className="d-flex align-items-center text-success fw-bold">
                     <TrendingDown size={14} className="me-1" />
                     Économisez ${msg.data.totalSavings.toFixed(2)} chez {msg.data.bestStore}
                   </small>
@@ -395,7 +398,7 @@ Je vous aide à comparer les prix entre Walmart, Metro et Super C.
           <div className="d-flex justify-content-start mb-3">
             <div className="bg-white rounded-3 p-3 shadow-sm border">
               <div className="d-flex align-items-center">
-                <Bot size={16} className="me-2 text-info" />
+                <Bot size={16} className="me-2 text-success" />
                 <small className="fw-bold">SmartShopper</small>
               </div>
               <div className="typing-dots mt-2">
@@ -484,9 +487,29 @@ Je vous aide à comparer les prix entre Walmart, Metro et Super C.
             )}
           </button>
         </div>
-        <small className="text-muted d-block mt-2">
-          💡 Appuyez sur Entrée pour envoyer • 🎤 pour parler • Compare Walmart, Metro et Super C
+        <small className="text-muted d-flex align-items-center justify-content-between mt-2">
+          <span>
+            💡 Appuyez sur Entrée pour envoyer • 🎤 pour parler • Compare Walmart, Metro et Super C
+          </span>
+
+          <button
+            className="btn btn-link p-0 ms-2 text-danger"
+            style={{ fontSize: "0.85rem" }}
+            onClick={() => {
+              localStorage.removeItem('smartshopper-chat-history');
+              setMessages([
+                {
+                  sender: 'bot',
+                  text: "👋 Bonjour ! Dites-moi ce que vous voulez comparer aujourd’hui.",
+                  timestamp: new Date()
+                }
+              ]);
+            }}
+          >
+           <Trash2 size={16} className="me-1" /> Effacer l'historique
+          </button>
         </small>
+
       </div>
 
       {/* Styles pour l'animation de typing */}

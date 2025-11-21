@@ -2,6 +2,7 @@
 /**
  * Service de récupération des promotions depuis l'API Flipp
  * Magasins supportés: Walmart, Super C, Metro
+ * NOTE: L'API Flipp retourne TOUS les magasins, on filtre par merchant_id côté client
  */
 
 import axios from "axios";
@@ -31,6 +32,8 @@ interface FlippAPIResponse {
     price?: string;
     original_price?: string;
     flyer_id?: number;
+    merchant_id?: number;
+    merchant_name?: string;
   }>;
 }
 
@@ -49,11 +52,11 @@ const API_CONFIG = {
   maxRetries: 2
 };
 
-// Mapping des noms de magasins pour l'API Flipp
-const STORE_MAPPING: Record<string, string> = {
-  "Walmart": "walmart",
-  "Metro": "metro",
-  "Super C": "super-c"
+// IDs des marchands Flipp (confirmés via l'API)
+const MERCHANT_IDS: Record<string, number> = {
+  "Walmart": 234,
+  "Metro": 2269,
+  "Super C": 2585
 };
 
 // ========================================
@@ -136,10 +139,15 @@ const EXCLUDE_KEYWORDS = [
   'javellisant', 'bleach', 'nettoyant', 'cleaner',
   
   // Électronique
-  'phone', 'tablet', 'laptop', 'tv', 'television',
+  'phone', 'tablet', 'laptop', 'tv', 'television', 'watch', 'gps',
+  'airpods', 'ipad', 'computer',
   
   // Vêtements
-  'shirt', 'pants', 'shoes', 'souliers', 'vêtement'
+  'shirt', 'pants', 'shoes', 'souliers', 'vêtement', 'clothing',
+  
+  // Jouets et décorations
+  'doll', 'poupée', 'slime', 'toy', 'jouet', 'gonflable', 
+  'décorative', 'decorative', 'basket burger'
 ];
 
 // ========================================
@@ -217,18 +225,20 @@ export async function fetchFlippPromotions(
   postalCode: string,
   maxPerCategory: number = 15
 ): Promise<Promotion[]> {
+  const targetMerchantId = MERCHANT_IDS[store];
+
+  if (!targetMerchantId) {
+    console.error(`❌ Magasin non supporté: ${store}`);
+    return [];
+  }
+
   console.log(`\n🔍 === RECHERCHE ${store.toUpperCase()} ===`);
+  console.log(`🏪 Merchant ID: ${targetMerchantId}`);
   console.log(`📍 Code postal: ${postalCode}`);
   console.log(`🎯 Maximum par catégorie: ${maxPerCategory}`);
 
   const promotions: Promotion[] = [];
   const seenProducts = new Set<string>();
-  const flippStoreName = STORE_MAPPING[store];
-
-  if (!flippStoreName) {
-    console.error(`❌ Magasin non supporté: ${store}`);
-    return [];
-  }
 
   try {
     // Dates de validité
@@ -250,14 +260,15 @@ export async function fetchFlippPromotions(
 
       console.log(`\n📦 Catégorie: ${categoryName}`);
 
-      // Utiliser les 2 premiers mots-clés par catégorie
-      for (const term of keywords.slice(0, 2)) {
+      // Utiliser les 4 premiers mots-clés par catégorie
+      for (const term of keywords.slice(0, 4)) {
         if (categoryCount >= maxPerCategory) {
           console.log(`   ⏭️ Limite atteinte pour ${categoryName}`);
           break;
         }
 
-        const url = `${API_CONFIG.baseUrl}?postal_code=${postalCode}&q=${encodeURIComponent(term)}&store=${flippStoreName}`;
+        // NE PAS FILTRER dans l'URL - l'API ignore ce paramètre
+        const url = `${API_CONFIG.baseUrl}?postal_code=${postalCode}&q=${encodeURIComponent(term)}`;
 
         try {
           // Requête API avec retry
@@ -283,10 +294,13 @@ export async function fetchFlippPromotions(
 
           if (!response) continue;
 
-          const items = response.data?.items || [];
-          console.log(`   🔎 "${term}": ${items.length} résultats`);
+          // 🎯 FILTRER PAR MERCHANT_ID ICI (côté client)
+          const allItems = response.data?.items || [];
+          const items = allItems.filter((item: any) => item.merchant_id === targetMerchantId);
 
-          // Traiter chaque item
+          console.log(`   🔎 "${term}": ${allItems.length} total → ${items.length} pour ${store}`);
+
+          // Traiter chaque item FILTRÉ
           for (const item of items) {
             const productName = (item.name || item.title || '').trim();
 
@@ -297,11 +311,7 @@ export async function fetchFlippPromotions(
             const productKey = `${store}|${productName.toLowerCase()}`;
             if (seenProducts.has(productKey)) continue;
 
-            // Vérifier si c'est un produit alimentaire
-            const foodCheck = isFoodProduct(productName);
-            if (!foodCheck.isFood || foodCheck.confidence < 0.35) continue;
-
-            // Parser les prix
+            // Parser les prix D'ABORD
             const salePrice = parsePrice(
               item.sale_price || item.current_price || item.price
             );
@@ -309,8 +319,12 @@ export async function fetchFlippPromotions(
               item.price || item.original_price
             );
 
-            // Validation du prix
-            if (salePrice <= 0 || salePrice > 1000) continue;
+            // Validation du prix (nourriture rarement > 100$)
+            if (salePrice <= 0 || salePrice > 100) continue;
+
+            // Vérifier si c'est un produit alimentaire
+            const foodCheck = isFoodProduct(productName);
+            if (!foodCheck.isFood || foodCheck.confidence < 0.35) continue;
 
             // Créer la promotion
             promotions.push({
@@ -348,7 +362,7 @@ export async function fetchFlippPromotions(
   }
 
   // Filtrer les promotions avec confiance suffisante
-  const filteredPromotions = promotions.filter(p => (p.confidence || 0) >= 0.5);
+  const filteredPromotions = promotions.filter(p => (p.confidence || 0) >= 0.3);
 
   console.log(`\n🎯 === RÉSULTATS ${store.toUpperCase()} ===`);
   console.log(`   📊 Total trouvés: ${promotions.length}`);
@@ -374,17 +388,18 @@ export async function fetchTargetedPromotions(
   postalCode: string,
   productList: string[]
 ): Promise<Promotion[]> {
+  const targetMerchantId = MERCHANT_IDS[store];
+
+  if (!targetMerchantId) {
+    console.error(`❌ Magasin non supporté: ${store}`);
+    return [];
+  }
+
   console.log(`\n🎯 === RECHERCHE CIBLÉE ${store.toUpperCase()} ===`);
   console.log(`📝 Produits: ${productList.join(', ')}`);
 
   const promotions: Promotion[] = [];
   const seenProducts = new Set<string>();
-  const flippStoreName = STORE_MAPPING[store];
-
-  if (!flippStoreName) {
-    console.error(`❌ Magasin non supporté: ${store}`);
-    return [];
-  }
 
   const today = new Date().toISOString().slice(0, 10);
   const endDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
@@ -393,7 +408,9 @@ export async function fetchTargetedPromotions(
 
   for (const product of productList) {
     const searchTerm = product.toLowerCase().trim();
-    const url = `${API_CONFIG.baseUrl}?postal_code=${postalCode}&q=${encodeURIComponent(searchTerm)}&store=${flippStoreName}`;
+    
+    // NE PAS FILTRER dans l'URL
+    const url = `${API_CONFIG.baseUrl}?postal_code=${postalCode}&q=${encodeURIComponent(searchTerm)}`;
 
     try {
       const response = await axios.get(url, {
@@ -401,8 +418,11 @@ export async function fetchTargetedPromotions(
         timeout: API_CONFIG.timeout
       });
 
-      const items = response.data?.items || [];
-      console.log(`   🔎 "${product}": ${items.length} résultats`);
+      // 🎯 FILTRER PAR MERCHANT_ID ICI
+      const allItems = response.data?.items || [];
+      const items = allItems.filter((item: any) => item.merchant_id === targetMerchantId);
+
+      console.log(`   🔎 "${product}": ${allItems.length} total → ${items.length} pour ${store}`);
 
       for (const item of items) {
         const productName = (item.name || item.title || '').trim();
@@ -411,9 +431,7 @@ export async function fetchTargetedPromotions(
         const productKey = `${store}|${productName.toLowerCase()}`;
         if (seenProducts.has(productKey)) continue;
 
-        const foodCheck = isFoodProduct(productName);
-        if (!foodCheck.isFood || foodCheck.confidence < 0.35) continue;
-
+        // Parser les prix
         const salePrice = parsePrice(
           item.sale_price || item.current_price || item.price
         );
@@ -421,7 +439,12 @@ export async function fetchTargetedPromotions(
           item.price || item.original_price
         );
 
-        if (salePrice <= 0 || salePrice > 1000) continue;
+        // Validation du prix
+        if (salePrice <= 0 || salePrice > 100) continue;
+
+        // Vérifier si c'est alimentaire
+        const foodCheck = isFoodProduct(productName);
+        if (!foodCheck.isFood || foodCheck.confidence < 0.35) continue;
 
         promotions.push({
           product_name: productName,

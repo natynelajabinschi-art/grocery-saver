@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 const CONFIG = {
   stores: ["Walmart", "Metro", "Super C"] as const,
   postalCode: "H2S0B8",
-  maxPromoPerCategory: 15,
+  maxPromoPerCategory: 100,
   minResultsThreshold: 3 // 🔹 Minimum de promos pour considérer que la récupération a marché
 };
 

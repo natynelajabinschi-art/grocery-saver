@@ -23,15 +23,15 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className={`${geistSans.variable} antialiased`}>
-        {/* NAVBAR */}
-        <nav className="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+        {/* NAVBAR COMPACTE */}
+        <nav className="navbar navbar-expand-lg navbar-light bg-white">
           <div className="container-fluid">
             {/* LOGO À GAUCHE */}
             <a className="navbar-brand d-flex align-items-center" href="/">
               <img
                 src="/flipp-logo.png"
                 alt="Flipp Logo"
-                width="120"
+                width="100"
                 height="auto"
                 className="me-2"
               />
@@ -52,42 +52,42 @@ export default function RootLayout({
               {/* MENU PRINCIPAL */}
               <ul className="navbar-nav me-auto mb-2 mb-lg-0">
                 <li className="nav-item">
-                  <a className="nav-link fw-semibold" href="/compare">
+                  <a className="nav-link fw-semibold" href="/compare" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>
                     Circulaires
                   </a>
                 </li>
                 <li className="nav-item">
-                  <a className="nav-link fw-semibold" href="/produits">
+                  <a className="nav-link fw-semibold" href="/produits" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>
                     Coupons
                   </a>
                 </li>
                 <li className="nav-item">
-                  <a className="nav-link fw-semibold" href="/statistiques">
+                  <a className="nav-link fw-semibold" href="/statistiques" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>
                     Liste d'achats
                   </a>
                 </li>
                 <li className="nav-item">
-                  <a className="nav-link fw-semibold" href="/statistiques">
+                  <a className="nav-link fw-semibold" href="/statistiques" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>
                     Recherche
                   </a>
                 </li>
                 <li className="nav-item">
-                  <a className="nav-link fw-semibold" href="/statistiques">
+                  <a className="nav-link fw-semibold" href="/statistiques" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>
                     Comparateur
                   </a>
                 </li>
               </ul>
 
               {/* MENU DROITE — LANGUE + CONNEXION */}
-              <div className="d-flex align-items-center gap-3">
+              <div className="d-flex align-items-center gap-2">
                 {/* Sélecteur de langue */}
-                <select className="form-select form-select-sm" style={{ width: "90px" }}>
+                <select className="form-select form-select-sm" style={{ width: "80px", fontSize: '0.8rem' }}>
                   <option value="fr">FR</option>
                   <option value="en">EN</option>
                 </select>
 
                 {/* Connexion */}
-                <a href="javascript;" className="btn btn-outline-primary btn-sm">
+                <a href="javascript;" className="btn btn-outline-primary btn-sm" style={{ fontSize: '0.8rem', padding: '0.25rem 0.75rem' }}>
                   Connexion
                 </a>
               </div>
@@ -96,13 +96,13 @@ export default function RootLayout({
         </nav>
 
         {/* MAIN */}
-        <main className="min-vh-100 bg-light">{children}</main>
+        <main>{children}</main>
 
         {/* FOOTER COMPLET */}
-        <footer className="bg-dark text-white py-5">
+        <footer className="bg-dark text-white py-4">
           <div className="container">
             {/* Ligne de séparation et copyright */}
-            <hr className="border-white-50 my-4" />
+            <hr className="border-white-50 my-3" />
             <div className="text-center text-white-50 small">
               © {new Date().getFullYear()} Flipp — Tous droits réservés
             </div>
