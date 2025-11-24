@@ -86,7 +86,7 @@ grocery-saver/
 │   ├── api/
 │   │   ├── compare/
 │   │   │   └── route.ts          # Comparaison de prix intelligente
-│   │   └── import-flyers/
+│   │   └── flyers/
 │   │       └── route.ts          # Import des circulaires
 │   └── page.tsx                  # Page principale
 ├── components/                    # Composants React réutilisables
@@ -137,7 +137,7 @@ Force un nouvel import en vidant d'abord la base de données.
 
 ## Configuration
 
-Les magasins et le code postal sont configurables dans `/app/api/import-flyers/route.ts` :
+Les magasins et le code postal sont configurables dans `/app/api/flyers/route.ts` :
 
 ```typescript
 const CONFIG = {
@@ -157,6 +157,3 @@ Les contributions sont les bienvenues ! N'hésitez pas à :
 3. Commit vos changements (`git commit -m 'Ajout d'une fonctionnalité'`)
 4. Push vers la branche (`git push origin feature/amelioration`)
 5. Ouvrir une Pull Request
-
-
-** Astuce** : Ajoutez vos épiceries favorites et laissez Grocery Saver trouver les meilleures aubaines pour vous !
