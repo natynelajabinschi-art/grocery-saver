@@ -15,11 +15,8 @@ Une application intelligente pour économiser sur vos courses en comparant les p
 
 - **Frontend**: Next.js 15.5.4 avec React 19
 - **Styling**: Tailwind CSS 4 + Bootstrap 5
-- **Animations**: Framer Motion
 - **Base de données**: Supabase
 - **IA**: OpenAI API
-- **Web Scraping**: Cheerio + Axios
-- **Testing**: Playwright
 - **Langage**: TypeScript
 
 ## Prérequis
@@ -62,7 +59,7 @@ npm run dev
 
 Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur.
 
-## 📦 Scripts disponibles
+## Scripts disponibles
 
 ```bash
 # Développement avec Turbopack
@@ -78,7 +75,7 @@ npm run start
 ### Mise en place
 
 1. Créez un projet sur [Supabase](https://supabase.com)
-2. Créez la table `promotions` avec les colonnes ci-dessus
+2. Créez la table `promotions` 
 3. Ajoutez vos clés dans `.env.local`
 
 ## Structure du projet
@@ -86,16 +83,22 @@ npm run start
 ```
 grocery-saver/
 ├── app/
-│   ├── api/                    # GET/POST endpoints
-│   │        
-│   └── page.tsx               # Page principale
-├── components/                # Composants React réutilisables
+│   ├── api/
+│   │   ├── compare/
+│   │   │   └── route.ts          # Comparaison de prix intelligente
+│   │   └── import-flyers/
+│   │       └── route.ts          # Import des circulaires
+│   └── page.tsx                  # Page principale
+├── components/                    # Composants React réutilisables
 ├── lib/
-│   ├── flyers.ts             # Récupération promotions Flipp
-│   ├── storePromotions.ts    # Gestion base de données
-│   └── supabaseClient.ts     # Configuration Supabase
-├── public/                    # Assets statiques
-└── styles/                    # Fichiers CSS globaux
+│   ├── flyers.ts                 # Récupération promotions Flipp
+│   ├── storePromotions.ts        # Gestion base de données
+│   ├── productMatcher.ts         # Algorithme de matching
+│   ├── priceCalculator.ts        # Cache et calculs
+│   ├── openaiClient.ts           # Service IA
+│   └── supabaseClient.ts         # Configuration Supabase
+├── public/                       # Assets statiques
+└── styles/                       # Fichiers CSS globaux   
 ```
 
 ## API Endpoints
@@ -122,7 +125,7 @@ Importe les circulaires du jour pour tous les magasins configurés.
 }
 ```
 
-### `POST /api/import-flyers`
+### `POST /api/flyers`
 Force un nouvel import en vidant d'abord la base de données.
 
 **Body:**
