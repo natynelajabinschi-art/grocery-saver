@@ -6,12 +6,10 @@ Une application intelligente pour économiser sur vos courses en comparant les p
 
 - **Import automatique de circulaires** - Récupère quotidiennement les promotions de Walmart, Metro et Super C
 - **Recherche de promotions** - Trouve les meilleures aubaines par magasin et catégorie
-- **Nettoyage automatique** - Supprime les promotions expirées pour garder la base de données à jour
 - **Statistiques en temps réel** - Visualise le nombre de promotions actives par magasin
 - **Base de données Supabase** - Stockage fiable et performant des promotions
 - **API REST** - Endpoints pour importer et consulter les promotions
 - **Interface moderne** - Design responsive avec Tailwind CSS et Bootstrap
-- **Mobile-friendly** - Optimisé pour tous les appareils
 
 ## Technologies
 
