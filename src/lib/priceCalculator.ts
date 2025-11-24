@@ -86,14 +86,17 @@ function isValidPrice(price: number | null | undefined): price is number {
 /**
  * Calcule le total d'une liste de prix
  */
+
 export function calculateTotal(prices: (number | null)[]): number {
   if (!prices || prices.length === 0) return 0;
-  const sum = prices.reduce((acc, price) => {
+  
+  const sum = prices.reduce((acc: number, price) => {
     if (isValidPrice(price)) {
       return acc + price;
     }
     return acc;
   }, 0);
+  
   return round(sum);
 }
 
@@ -235,16 +238,20 @@ export function compareProducts(
 
     let bestStore: "Walmart" | "Metro" | "Super C" | null = null;
     let bestPrice: number | null = null;
+    // Dans la fonction compareProducts, remplacez cette partie :
     let hasPromotion = false;
 
     if (validPrices.length > 0) {
       validPrices.sort((a, b) => a.price - b.price);
       bestStore = validPrices[0].store;
       bestPrice = validPrices[0].price;
-      hasPromotion =
-        (bestStore === "Walmart" && walmartOldPrice && walmartOldPrice > walmartPrice) ||
-        (bestStore === "Metro" && metroOldPrice && metroOldPrice > metroPrice) ||
-        (bestStore === "Super C" && supercOldPrice && supercOldPrice > supercPrice);
+      
+      // Correction : Vérification plus stricte des types
+      hasPromotion = Boolean(
+        (bestStore === "Walmart" && isValidPrice(walmartOldPrice) && isValidPrice(walmartPrice) && walmartOldPrice > walmartPrice) ||
+        (bestStore === "Metro" && isValidPrice(metroOldPrice) && isValidPrice(metroPrice) && metroOldPrice > metroPrice) ||
+        (bestStore === "Super C" && isValidPrice(supercOldPrice) && isValidPrice(supercPrice) && supercOldPrice > supercPrice)
+      );
 
       if (savings > 0) {
         storeCheaperCount[bestStore]++;
