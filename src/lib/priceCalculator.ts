@@ -90,7 +90,7 @@ function isValidPrice(price: number | null | undefined): price is number {
 export function calculateTotal(prices: (number | null)[]): number {
   if (!prices || prices.length === 0) return 0;
   
-  const sum = prices.reduce((acc: number, price) => {
+  const sum = prices.reduce<number>((acc, price) => {
     if (isValidPrice(price)) {
       return acc + price;
     }
