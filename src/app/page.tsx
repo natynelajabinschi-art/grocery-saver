@@ -24,7 +24,6 @@ interface ComparisonResult {
 
 export default function HomePage() {
   const [comparedItems, setComparedItems] = useState<string[]>([]);
-
   const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -53,7 +52,7 @@ export default function HomePage() {
     }
   };
 
-  // Données par défaut si pas de résultats
+  // Données par défaut avec 0$ pour tous les magasins
   const storePrices = comparisonResult ? [
     { 
       total: `${comparisonResult.summary.totalWalmart.toFixed(2)}$`, 
@@ -74,9 +73,9 @@ export default function HomePage() {
       promos: comparisonResult.summary.promotionsFoundMetro
     }
   ] : [
-    { total: '0 $', logo: '/Walmart_logo.png', isBestChoice: false, promos: 0 },
-    { total: '0 $', logo: '/Logo_SuperC.png', isBestChoice: false, promos: 0 },
-    { total: '0 $', logo: '/Metro_logo.png', isBestChoice: false, promos: 0 }
+    { total: '0.00 $', logo: '/Walmart_logo.png', isBestChoice: false, promos: 0 },
+    { total: '0.00 $', logo: '/Logo_SuperC.png', isBestChoice: false, promos: 0 },
+    { total: '0.00 $', logo: '/Metro_logo.png', isBestChoice: false, promos: 0 }
   ];
 
   // Trouver le magasin le plus économique et les économies
@@ -102,7 +101,7 @@ export default function HomePage() {
         .slice(0, 3)
         .map(c => c.originalProduct)
         .join(', ')
-    : 'Framboises, Fromage Noir, Pâtes';
+    : 'Aucun produit analysé';
 
   return (
     <div className="min-vh-100" style={{ backgroundColor: '#ffffff' }}>
@@ -298,13 +297,13 @@ export default function HomePage() {
                             <div className="mb-2">
                               <span className="fw-semibold">Magasin le plus avantageux:</span>
                               <span className="ms-2 fw-bold" style={{ color: comparisonResult ? '#198754' : '#6c757d' }}>
-                                {comparisonResult ? bestStoreInfo?.name : 'Walmart'}
+                                {comparisonResult ? bestStoreInfo?.name : '-'}
                               </span>
                             </div>
                             <div className="mb-2">
                               <span className="fw-semibold">Économisez jusqu'à:</span>
                               <span className="ms-2 fw-bold" style={{ color: comparisonResult ? '#198754' : '#6c757d' }}>
-                                {comparisonResult ? `${bestStoreInfo?.savings.toFixed(2)}$` : '6,80$'}
+                                {comparisonResult ? `${bestStoreInfo?.savings.toFixed(2)}$` : '0.00$'}
                               </span>
                             </div>
                             {comparisonResult && (
@@ -345,24 +344,24 @@ export default function HomePage() {
                       <div className="d-flex justify-content-between mb-2">
                         <span className="text-muted">Total estimé:</span>
                         <span className="fw-bold text-dark">
-                          {bestStoreInfo 
+                          {bestStoreInfo && comparisonResult
                             ? `${bestStoreInfo.total.toFixed(2)}$` 
-                            : '35,99$'
+                            : '0.00$'
                           }
                         </span>
                       </div>
                       <div className="d-flex justify-content-between mb-2">
                         <span className="text-muted">Magasin économique:</span>
                         <span className={`fw-bold ${comparisonResult ? 'text-success' : 'text-muted'}`}>
-                          {bestStoreInfo?.name || 'Walmart'}
+                          {bestStoreInfo?.name || '-'}
                         </span>
                       </div>
                       <div className="d-flex justify-content-between">
                         <span className="text-muted">Économies totales estimées:</span>
                         <span className={`fw-bold ${comparisonResult ? 'text-success' : 'text-muted'}`}>
-                          {bestStoreInfo 
+                          {bestStoreInfo && comparisonResult
                             ? `${bestStoreInfo.savings.toFixed(2)}$`
-                            : '6,80$'
+                            : '0.00$'
                           }
                         </span>
                       </div>
@@ -375,8 +374,8 @@ export default function HomePage() {
                         <strong>{bestStoreInfo?.name}</strong>
                       </div>
                     ) : (
-                      <div className="alert alert-success py-2 px-3 mb-0">
-                        <strong>🎉 Super!</strong> Votre panier est prêt !
+                      <div className="alert alert-light py-2 px-3 mb-0 border">
+                        <strong>📝 En attente</strong> Entrez votre liste de courses pour commencer l'analyse
                       </div>
                     )}
                   </div>
