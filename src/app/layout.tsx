@@ -52,27 +52,27 @@ export default function RootLayout({
               {/* MENU PRINCIPAL */}
               <ul className="navbar-nav me-auto mb-2 mb-lg-0">
                 <li className="nav-item">
-                  <a className="nav-link fw-semibold" href="/compare" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>
+                  <a className="nav-link fw-semibold" href="#" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>
                     Circulaires
                   </a>
                 </li>
                 <li className="nav-item">
-                  <a className="nav-link fw-semibold" href="/produits" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>
+                  <a className="nav-link fw-semibold" href="#" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>
                     Coupons
                   </a>
                 </li>
                 <li className="nav-item">
-                  <a className="nav-link fw-semibold" href="/statistiques" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>
+                  <a className="nav-link fw-semibold" href="#" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>
                     Liste d'achats
                   </a>
                 </li>
                 <li className="nav-item">
-                  <a className="nav-link fw-semibold" href="/statistiques" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>
+                  <a className="nav-link fw-semibold" href="#" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>
                     Recherche
                   </a>
                 </li>
                 <li className="nav-item">
-                  <a className="nav-link fw-semibold" href="/statistiques" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>
+                  <a className="nav-link fw-semibold" href="#" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>
                     Comparateur
                   </a>
                 </li>
@@ -81,13 +81,13 @@ export default function RootLayout({
               {/* MENU DROITE — LANGUE + CONNEXION */}
               <div className="d-flex align-items-center gap-2">
                 {/* Sélecteur de langue */}
-                <select className="form-select form-select-sm" style={{ width: "80px", fontSize: '0.8rem' }}>
+                <select className="form-select form-select-sm" style={{ width: "80px", fontSize: '0.8rem' }} disabled>
                   <option value="fr">FR</option>
                   <option value="en">EN</option>
                 </select>
 
                 {/* Connexion */}
-                <a href="javascript;" className="btn btn-outline-primary btn-sm" style={{ fontSize: '0.8rem', padding: '0.25rem 0.75rem' }}>
+                <a href="#" className="btn btn-outline-primary btn-sm"  style={{ fontSize: '0.8rem', padding: '0.25rem 0.75rem' }}>
                   Connexion
                 </a>
               </div>
